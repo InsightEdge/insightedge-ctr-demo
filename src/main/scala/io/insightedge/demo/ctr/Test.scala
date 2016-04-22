@@ -1,5 +1,7 @@
 package io.insightedge.demo.ctr
 
+import java.lang.Double
+
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
 import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
@@ -15,34 +17,12 @@ object Test {
 
   def main(args: Array[String]) = {
 
-    val csvPath = "/home/pivot/Downloads/avazu-ctr/train_100k"
-    val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster("local[2]"))
-    val sqlContext = new SQLContext(sc)
+    val a = "10000174058809263569"
 
-    val df = sqlContext.createDataFrame(Seq(
-      (0, "a"),
-      (1, "b"),
-      (2, "c"),
-      (3, "a"),
-      (4, "a"),
-      (5, "c")
-    )).toDF("id", "category")
+    val d  = a.toDouble
 
-    val indexer = new StringIndexer()
-      .setInputCol("category")
-      .setOutputCol("categoryIndex")
-      .fit(df)
-    val indexed = indexer.transform(df)
-
-    val encoder = new OneHotEncoder()
-      .setInputCol("categoryIndex")
-      .setOutputCol("categoryVec")
-
-    val encoded = encoder.transform(indexed)
-
-    encoded.printSchema()
-    encoded.select("id", "categoryVec").show()
-
+    d.toString
+    println(String.format("%.0f", new Double(d)))
 
 
   }
