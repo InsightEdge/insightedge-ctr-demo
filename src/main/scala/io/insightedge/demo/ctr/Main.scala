@@ -23,36 +23,41 @@ object Main {
 
   def main(args: Array[String]) = {
 
+    val startTime = System.currentTimeMillis()
+
     val trainCsvPath = "/home/pivot/Downloads/avazu-ctr/train_1M"
     val testCsvPath = "/home/pivot/Downloads/avazu-ctr/test"
 
-    val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster("local[2]"))
+    val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster("local[*]"))
 
-    //    sc.setLogLevel("ERROR")
+    sc.setLogLevel("ERROR")
 
     val sql = new SQLContext(sc)
 
-    val rawTrainDf = loadCsvFile(sql, trainCsvPath, clickColumn = true)
-    val rawTestDf = loadCsvFile(sql, testCsvPath, clickColumn = false)
+    val rawTrainDf = loadCsvFile(sql, trainCsvPath, hasClickColumn = true)
+    val rawTestDf = loadCsvFile(sql, testCsvPath, hasClickColumn = false)
 
-    rawTrainDf.cache()
-    rawTestDf.cache()
+//    rawTrainDf.cache()
+//    rawTestDf.cache()
 
-    rawTrainDf.printSchema()
-
-    val count = rawTrainDf.count()
-    val clicks = rawTrainDf.filter("click = 1").count()
-
-    println(s"count $count")
-    println(s"clicks $clicks")
-    println(s"clicks% ${clicks.toFloat / count}")
+//    rawTrainDf.printSchema()
+//    val count = rawTrainDf.count()
+//    val clicks = rawTrainDf.filter("click = 1").count()
+//    println(s"count $count")
+//    println(s"clicks $clicks")
+//    println(s"clicks% ${clicks.toFloat / count}")
 
     // transform features (categorical + hours)
+
+    //    println("======")
+    //    transformHour(rawTestDf).show(100)
+    //    println("======")
 
     val (encodedTrainDf, encodedTestDf) = encodeLabels(
       transformHour(rawTrainDf),
       transformHour(rawTestDf)
     )
+
 
 
     val Array(training, validation) = assembleFeatures(encodedTrainDf)
@@ -78,7 +83,10 @@ object Main {
     calcMetrics(predictionAndLabels)
 
     // predict Kaggle test data
-    //    kaggleTest(sql, model, encodedTestDf)
+//    kaggleTest(sql, model, encodedTestDf)
+
+    val endTime = System.currentTimeMillis()
+    println("time taken(s): " + (endTime - startTime) / 1000)
   }
 
   def rowToLabelPoint(r: Row) = LabeledPoint(r.getAs[Int]("click").toDouble, r.getAs[Vector]("features"))
@@ -94,12 +102,16 @@ object Main {
       s"$id,$score"
     }
 
+    val header = sql.sparkContext.parallelize(Seq("id,click"))
+
     // TODO: to save to a single file
-    outRdd.repartition(1).saveAsTextFile("/home/pivot/Downloads/avazu-ctr/test_out" + new Date())
+    val outDir = "/home/pivot/Downloads/avazu-ctr/test_out_" + new Date()
+    (header ++ outRdd).repartition(1).saveAsTextFile(outDir)
+    Utils.zipPredictionFile(outDir + "/part-00000", outDir + "/prediction.zip")
     println("done")
   }
 
-  def loadCsvFile(sqlContext: SQLContext, csvPath: String, clickColumn: Boolean): DataFrame = {
+  def loadCsvFile(sqlContext: SQLContext, csvPath: String, hasClickColumn: Boolean): DataFrame = {
     val df = sqlContext.read
       .format("com.databricks.spark.csv")
       .option("header", "true")
@@ -110,25 +122,29 @@ object Main {
       df("id"),
       df("device_type"),
       df("device_conn_type"),
-      df("hour").cast(IntegerType),
-      df("C14").cast(IntegerType),
-      df("C15").cast(IntegerType),
-      df("C16").cast(IntegerType),
-      df("C17").cast(IntegerType),
-      df("C18").cast(IntegerType),
-      df("C19").cast(IntegerType),
-      df("C20").cast(IntegerType),
-      df("C21").cast(IntegerType)
+      df("hour"),
+      df("C14"),
+      df("C15"),
+      df("C16"),
+      df("C17"),
+      df("C18"),
+      df("C19"),
+      df("C20"),
+      df("C21")
     )
 
-    if (clickColumn) {
+    // click col is only in train dataset, it's missing in the test dataset, but we want to keep the schema the same
+    // so we can union datasets later, so for test dataset we add fictive 'click' col
+    if (hasClickColumn) {
       selectCols += df("click").cast(IntegerType)
+      df.select(selectCols: _*)
+    } else {
+      df.select(selectCols: _*).withColumn("click", lit(0))
     }
-
-    df.select(selectCols: _*)
   }
 
   def encodeLabel(unionDf: DataFrame, df1: DataFrame, df2: DataFrame, inputColumn: String): (DataFrame, DataFrame) = {
+    println(s"Encoding label $inputColumn")
     val indexer = new StringIndexer()
       .setInputCol(inputColumn)
       .setOutputCol(inputColumn + "_index")
@@ -137,6 +153,7 @@ object Main {
     def transform(df: DataFrame) = {
       val indexed = indexer.transform(df)
       val encoder = new OneHotEncoder()
+        .setDropLast(false)
         .setInputCol(inputColumn + "_index")
         .setOutputCol(inputColumn + "_vector")
 
@@ -146,20 +163,53 @@ object Main {
     (transform(df1), transform(df2))
   }
 
+  val categoricalColumns = Seq("device_type", "device_conn_type",
+    "time_year", "time_month", "time_day", "time_hour",
+    "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21")
+  val categoricalColumnsVectors = categoricalColumns.map(_ + "_vector")
+
   def encodeLabels(trainDf: DataFrame, testDf: DataFrame): (DataFrame, DataFrame) = {
-    val categoricalColumns = Seq("device_type", "device_conn_type", "time_year", "time_month", "time_day", "time_hour")
+    // TODO: ???
+    trainDf.cache()
+    testDf.cache()
 
     // add fictive 'click' column to testDf so we can union them
-    val unionDf = trainDf.unionAll(
-      testDf.withColumn("click", lit(0))
-    )
+    //    val unionDf = trainDf.unionAll(
+    //      testDf.withColumn("click", lit(0))
+    //    )
+
+    // remove 'click' column so we can union them correctly
+    val unionDf = trainDf.unionAll(testDf)
+
+    unionDf.cache()
+
+    //    println("testDf size is " + testDf.count())
+    //    println("trainDf size is " + trainDf.count())
+    //    println("unionDf size: " + unionDf.count())
+    //
+    //    println("testDf: start ======")
+    //    testDf.show(100)
+    //    println("testDf: end ======")
+    //
+    //    println("trainDf: start ======")
+    //    trainDf.show(100)
+    //    println("trainDf: end ======")
+    //
+    //    println("unionDf: start ======")
+    //    unionDf.show(100)
+    //    println("unionDf: end ======")
+    //
+    //    println("uniton print start======")
+    //    unionDf.foreach(println)
+    //    println("uniton print end======")
+
 
     categoricalColumns.foldLeft(trainDf -> testDf) { case ((df1, df2), col) => encodeLabel(unionDf, df1, df2, col) }
   }
 
   def assembleFeatures(df: DataFrame): DataFrame = {
     val assembler = new VectorAssembler()
-      .setInputCols(Array("device_type_vector", "device_conn_type_vector", "time_year", "time_month", "time_day", "time_hour", "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21"))
+      .setInputCols(categoricalColumnsVectors.toArray)
       .setOutputCol("features")
 
     assembler.transform(df)
@@ -169,7 +219,7 @@ object Main {
     val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
     val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
     val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
-    val toHour = udf[Int, String](s => DateUtils.parse(s)._3)
+    val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
 
     df.withColumn("time_year", toYear(df("hour")))
       .withColumn("time_month", toMonth(df("hour")))
