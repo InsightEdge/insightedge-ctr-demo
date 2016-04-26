@@ -26,7 +26,7 @@ object Main {
     val startTime = System.currentTimeMillis()
 
     val trainCsvPath = "/home/pivot/Downloads/avazu-ctr/train_1M"
-    val testCsvPath = "/home/pivot/Downloads/avazu-ctr/test"
+    val testCsvPath = "/home/pivot/Downloads/avazu-ctr/test_100"
 
     val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster("local[*]"))
 
@@ -35,30 +35,19 @@ object Main {
     val sql = new SQLContext(sc)
 
     val rawTrainDf = loadCsvFile(sql, trainCsvPath, hasClickColumn = true)
+
+//    println("site_id distinct " + rawTrainDf.select("site_id").distinct().count())
+//    println("site_category distinct " + rawTrainDf.select("site_category").distinct().count())
+//    println("device_conn_type distinct " + rawTrainDf.select("device_conn_type").distinct().count())
+//    println("app_id distinct " + rawTrainDf.select("app_id").distinct().count())
+//    System.exit(1)
+
     val rawTestDf = loadCsvFile(sql, testCsvPath, hasClickColumn = false)
-
-//    rawTrainDf.cache()
-//    rawTestDf.cache()
-
-//    rawTrainDf.printSchema()
-//    val count = rawTrainDf.count()
-//    val clicks = rawTrainDf.filter("click = 1").count()
-//    println(s"count $count")
-//    println(s"clicks $clicks")
-//    println(s"clicks% ${clicks.toFloat / count}")
-
-    // transform features (categorical + hours)
-
-    //    println("======")
-    //    transformHour(rawTestDf).show(100)
-    //    println("======")
 
     val (encodedTrainDf, encodedTestDf) = encodeLabels(
       transformHour(rawTrainDf),
       transformHour(rawTestDf)
     )
-
-
 
     val Array(training, validation) = assembleFeatures(encodedTrainDf)
       .select("features", "click")
@@ -83,7 +72,7 @@ object Main {
     calcMetrics(predictionAndLabels)
 
     // predict Kaggle test data
-//    kaggleTest(sql, model, encodedTestDf)
+    //    kaggleTest(sql, model, encodedTestDf)
 
     val endTime = System.currentTimeMillis()
     println("time taken(s): " + (endTime - startTime) / 1000)
@@ -120,9 +109,20 @@ object Main {
 
     val selectCols = ListBuffer(
       df("id"),
+//      df("device_id"),
+//      df("device_ip"),
+      df("device_model"),
       df("device_type"),
       df("device_conn_type"),
       df("hour"),
+      df("C1"),
+      df("banner_pos"),
+//      df("site_id"),
+//      df("site_domain"),
+      df("site_category"),
+//      df("app_id"),
+      df("app_domain"),
+      df("app_category"),
       df("C14"),
       df("C15"),
       df("C16"),
@@ -158,14 +158,40 @@ object Main {
         .setOutputCol(inputColumn + "_vector")
 
       encoder.transform(indexed)
+        .drop(inputColumn)
+        .drop(inputColumn + "_index")
     }
 
     (transform(df1), transform(df2))
   }
 
-  val categoricalColumns = Seq("device_type", "device_conn_type",
-    "time_year", "time_month", "time_day", "time_hour",
-    "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21")
+  val categoricalColumns = Seq(
+//    "device_id",
+//    "device_ip",
+    "device_model",
+    "device_type",
+    "device_conn_type",
+    "time_year",
+    "time_month",
+    "time_day",
+    "time_hour",
+    "C1",
+    "banner_pos",
+//    "site_id",
+//    "site_domain",
+    "site_category",
+//    "app_id",
+    "app_domain",
+    "app_category",
+    "C14",
+    "C15",
+    "C16",
+    "C17",
+    "C18",
+    "C19",
+    "C20",
+    "C21")
+
   val categoricalColumnsVectors = categoricalColumns.map(_ + "_vector")
 
   def encodeLabels(trainDf: DataFrame, testDf: DataFrame): (DataFrame, DataFrame) = {
