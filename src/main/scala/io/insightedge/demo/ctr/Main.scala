@@ -3,14 +3,21 @@ package io.insightedge.demo.ctr
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
+import org.apache.spark.annotation.DeveloperApi
+import org.apache.spark.ml.classification.LogisticRegression
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, VectorAssembler}
-import org.apache.spark.mllib.classification.{LogisticRegressionModel, LogisticRegressionWithLBFGS}
+import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
+import org.apache.spark.ml.util.Identifiable
+import org.apache.spark.ml.{Pipeline, Transformer}
+import org.apache.spark.mllib.classification.LogisticRegressionModel
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.{DoubleType, IntegerType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -35,13 +42,6 @@ object Main {
     val sql = new SQLContext(sc)
 
     val rawTrainDf = loadCsvFile(sql, trainCsvPath, hasClickColumn = true)
-
-//    println("site_id distinct " + rawTrainDf.select("site_id").distinct().count())
-//    println("site_category distinct " + rawTrainDf.select("site_category").distinct().count())
-//    println("device_conn_type distinct " + rawTrainDf.select("device_conn_type").distinct().count())
-//    println("app_id distinct " + rawTrainDf.select("app_id").distinct().count())
-//    System.exit(1)
-
     val rawTestDf = loadCsvFile(sql, testCsvPath, hasClickColumn = false)
 
     val (encodedTrainDf, encodedTestDf) = encodeLabels(
@@ -49,27 +49,60 @@ object Main {
       transformHour(rawTestDf)
     )
 
-    val Array(training, validation) = assembleFeatures(encodedTrainDf)
-      .select("features", "click")
-      .map(rowToLabelPoint)
-      .randomSplit(Array(0.8, 0.2), seed = 17)
+//    val Array(training, validation) = assembleFeatures(encodedTrainDf)
+//      .select("features", "click")
+//      .map(rowToLabelPoint)
+//      .randomSplit(Array(0.8, 0.2), seed = 17)
 
     // train
 
-    val model = new LogisticRegressionWithLBFGS()
-      .setNumClasses(2)
-      .run(training)
+    //    val model = new LogisticRegressionWithLBFGS()
+    //      .setNumClasses(2)
+    //      .run(training)
+    //
+    //    // Clear the prediction threshold so the model will return probabilities
+    //    model.clearThreshold
+    //
+    //    // Compute raw scores on the test set.
+    //    val predictionAndLabels = validation.map { case LabeledPoint(label, features) =>
+    //      val prediction = model.predict(features)
+    //      (prediction, label)
+    //    }
+    //
+    //    calcMetrics(predictionAndLabels)
 
-    // Clear the prediction threshold so the model will return probabilities
-    model.clearThreshold
 
-    // Compute raw scores on the test set.
-    val predictionAndLabels = validation.map { case LabeledPoint(label, features) =>
-      val prediction = model.predict(features)
-      (prediction, label)
-    }
+    //    val hourTransformer = new HourTransformer()
+    val assembler = new VectorAssembler()
+      .setInputCols(categoricalColumnsVectors.toArray)
+      .setOutputCol("features")
 
-    calcMetrics(predictionAndLabels)
+    val lr = new LogisticRegression().setLabelCol("click")
+
+    val pipeline = new Pipeline().setStages(Array(assembler, lr))
+
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(lr.regParam, Array(0.1, 0.01))
+      .build()
+
+    val cv = new CrossValidator()
+      .setEstimator(pipeline)
+      .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(2) // Use 3+ in practice
+
+    val cvModel = cv.fit(encodedTrainDf)
+
+    cvModel.avgMetrics.foreach(m => println("METRICS = " + m))
+
+    cvModel.transform(encodedTestDf).show()
+
+//    val model = pipeline.fit(encodedTrainDf)
+//
+//    val prediction = model.transform(encodedTestDf).select("features", "probability", "prediction")
+//    prediction.show()
+
+
 
     // predict Kaggle test data
     //    kaggleTest(sql, model, encodedTestDf)
@@ -77,6 +110,38 @@ object Main {
     val endTime = System.currentTimeMillis()
     println("time taken(s): " + (endTime - startTime) / 1000)
   }
+
+  class HourTransformer(override val uid: String) extends Transformer {
+    def this() = this(Identifiable.randomUID("hourTransformer"))
+
+    override def transform(df: DataFrame): DataFrame = {
+      val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
+      val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
+      val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
+      val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
+
+      df.withColumn("time_year", toYear(df("hour")))
+        .withColumn("time_month", toMonth(df("hour")))
+        .withColumn("time_day", toDay(df("hour")))
+        .withColumn("time_hour", toHour(df("hour")))
+        .drop("hour")
+    }
+
+    @DeveloperApi
+    override def transformSchema(schema: StructType): StructType = {
+      val newCols = Seq(
+        StructField("time_year", IntegerType, nullable = false),
+        StructField("time_month", IntegerType, nullable = false),
+        StructField("time_day", IntegerType, nullable = false),
+        StructField("time_hour", IntegerType, nullable = false)
+      )
+
+      StructType(schema.filterNot(_.name == "hour") ++ newCols)
+    }
+
+    override def copy(extra: ParamMap): Transformer = defaultCopy(extra)
+  }
+
 
   def rowToLabelPoint(r: Row) = LabeledPoint(r.getAs[Int]("click").toDouble, r.getAs[Vector]("features"))
 
@@ -109,18 +174,18 @@ object Main {
 
     val selectCols = ListBuffer(
       df("id"),
-//      df("device_id"),
-//      df("device_ip"),
+      //      df("device_id"),
+      //      df("device_ip"),
       df("device_model"),
       df("device_type"),
       df("device_conn_type"),
       df("hour"),
       df("C1"),
       df("banner_pos"),
-//      df("site_id"),
-//      df("site_domain"),
+      //      df("site_id"),
+      //      df("site_domain"),
       df("site_category"),
-//      df("app_id"),
+      //      df("app_id"),
       df("app_domain"),
       df("app_category"),
       df("C14"),
@@ -136,7 +201,7 @@ object Main {
     // click col is only in train dataset, it's missing in the test dataset, but we want to keep the schema the same
     // so we can union datasets later, so for test dataset we add fictive 'click' col
     if (hasClickColumn) {
-      selectCols += df("click").cast(IntegerType)
+      selectCols += df("click").cast(DoubleType)
       df.select(selectCols: _*)
     } else {
       df.select(selectCols: _*).withColumn("click", lit(0))
@@ -166,8 +231,8 @@ object Main {
   }
 
   val categoricalColumns = Seq(
-//    "device_id",
-//    "device_ip",
+    //    "device_id",
+    //    "device_ip",
     "device_model",
     "device_type",
     "device_conn_type",
@@ -177,10 +242,10 @@ object Main {
     "time_hour",
     "C1",
     "banner_pos",
-//    "site_id",
-//    "site_domain",
+    //    "site_id",
+    //    "site_domain",
     "site_category",
-//    "app_id",
+    //    "app_id",
     "app_domain",
     "app_category",
     "C14",
