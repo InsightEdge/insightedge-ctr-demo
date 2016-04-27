@@ -3,21 +3,18 @@ package io.insightedge.demo.ctr
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
-import org.apache.spark.annotation.DeveloperApi
+import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, VectorAssembler}
-import org.apache.spark.ml.param.ParamMap
-import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
-import org.apache.spark.ml.util.Identifiable
-import org.apache.spark.ml.{Pipeline, Transformer}
+import org.apache.spark.ml.tuning.{CrossValidatorModel, CrossValidator, ParamGridBuilder}
 import org.apache.spark.mllib.classification.LogisticRegressionModel
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{DoubleType, IntegerType, StructField, StructType}
+import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -33,7 +30,7 @@ object Main {
     val startTime = System.currentTimeMillis()
 
     val trainCsvPath = "/home/pivot/Downloads/avazu-ctr/train_1M"
-    val testCsvPath = "/home/pivot/Downloads/avazu-ctr/test_100"
+    val testCsvPath = "/home/pivot/Downloads/avazu-ctr/test"
 
     val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster("local[*]"))
 
@@ -49,10 +46,10 @@ object Main {
       transformHour(rawTestDf)
     )
 
-//    val Array(training, validation) = assembleFeatures(encodedTrainDf)
-//      .select("features", "click")
-//      .map(rowToLabelPoint)
-//      .randomSplit(Array(0.8, 0.2), seed = 17)
+    //    val Array(training, validation) = assembleFeatures(encodedTrainDf)
+    //      .select("features", "click")
+    //      .map(rowToLabelPoint)
+    //      .randomSplit(Array(0.8, 0.2), seed = 17)
 
     // train
 
@@ -82,7 +79,8 @@ object Main {
     val pipeline = new Pipeline().setStages(Array(assembler, lr))
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(lr.regParam, Array(0.1, 0.01))
+      //      .addGrid(lr.regParam, Array(0.1, 0.01))
+      .addGrid(lr.regParam, Array(0.01))
       .build()
 
     val cv = new CrossValidator()
@@ -95,72 +93,31 @@ object Main {
 
     cvModel.avgMetrics.foreach(m => println("METRICS = " + m))
 
-    cvModel.transform(encodedTestDf).show()
-
-//    val model = pipeline.fit(encodedTrainDf)
-//
-//    val prediction = model.transform(encodedTestDf).select("features", "probability", "prediction")
-//    prediction.show()
-
-
+    cvModel.save("/home/pivot/Downloads/avazu-ctr/test_out_" + new Date() + "_model")
 
     // predict Kaggle test data
-    //    kaggleTest(sql, model, encodedTestDf)
+    kaggleTest(sql, cvModel, encodedTestDf)
 
     val endTime = System.currentTimeMillis()
     println("time taken(s): " + (endTime - startTime) / 1000)
   }
 
-  class HourTransformer(override val uid: String) extends Transformer {
-    def this() = this(Identifiable.randomUID("hourTransformer"))
-
-    override def transform(df: DataFrame): DataFrame = {
-      val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
-      val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
-      val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
-      val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
-
-      df.withColumn("time_year", toYear(df("hour")))
-        .withColumn("time_month", toMonth(df("hour")))
-        .withColumn("time_day", toDay(df("hour")))
-        .withColumn("time_hour", toHour(df("hour")))
-        .drop("hour")
-    }
-
-    @DeveloperApi
-    override def transformSchema(schema: StructType): StructType = {
-      val newCols = Seq(
-        StructField("time_year", IntegerType, nullable = false),
-        StructField("time_month", IntegerType, nullable = false),
-        StructField("time_day", IntegerType, nullable = false),
-        StructField("time_hour", IntegerType, nullable = false)
-      )
-
-      StructType(schema.filterNot(_.name == "hour") ++ newCols)
-    }
-
-    override def copy(extra: ParamMap): Transformer = defaultCopy(extra)
-  }
-
-
   def rowToLabelPoint(r: Row) = LabeledPoint(r.getAs[Int]("click").toDouble, r.getAs[Vector]("features"))
 
-  def kaggleTest(sql: SQLContext, model: LogisticRegressionModel, encodedTestDf: DataFrame) = {
+  def kaggleTest(sql: SQLContext, cvModel: CrossValidatorModel, encodedTestDf: DataFrame) = {
 
-    val test = assembleFeatures(encodedTestDf).select("id", "features")
-
-    val outRdd = test.map { r =>
-      val features = r.getAs[Vector]("features")
+    val predictionRdd = cvModel.transform(encodedTestDf).map { r =>
       val id = r.getAs[String]("id")
-      val score = model.predict(features)
-      s"$id,$score"
+      val probVector =  r.getAs[Vector]("probability")
+      val clickProb = probVector(1)
+      s"$id,$clickProb"
     }
 
     val header = sql.sparkContext.parallelize(Seq("id,click"))
 
     // TODO: to save to a single file
     val outDir = "/home/pivot/Downloads/avazu-ctr/test_out_" + new Date()
-    (header ++ outRdd).repartition(1).saveAsTextFile(outDir)
+    (header ++ predictionRdd).repartition(1).saveAsTextFile(outDir)
     Utils.zipPredictionFile(outDir + "/part-00000", outDir + "/prediction.zip")
     println("done")
   }
@@ -296,14 +253,6 @@ object Main {
 
 
     categoricalColumns.foldLeft(trainDf -> testDf) { case ((df1, df2), col) => encodeLabel(unionDf, df1, df2, col) }
-  }
-
-  def assembleFeatures(df: DataFrame): DataFrame = {
-    val assembler = new VectorAssembler()
-      .setInputCols(categoricalColumnsVectors.toArray)
-      .setOutputCol("features")
-
-    assembler.transform(df)
   }
 
   def transformHour(df: DataFrame): DataFrame = {
