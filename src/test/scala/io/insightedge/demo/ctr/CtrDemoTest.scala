@@ -1,4 +1,4 @@
-package ctr.demo.insightedge.io
+package io.insightedge.demo.ctr
 
 import io.insightedge.demo.ctr.CtrDemo.DateUtils
 import org.scalatest.FunSuite

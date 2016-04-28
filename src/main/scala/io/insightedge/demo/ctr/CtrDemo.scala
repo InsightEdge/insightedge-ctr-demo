@@ -56,14 +56,15 @@ object CtrDemo {
     val pipeline = new Pipeline().setStages(Array(assembler, lr))
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(lr.regParam, Array(0.01, 0.1 /*, 1.0 */))
-      .addGrid(lr.elasticNetParam, Array(0.0, 0.5 /*, 1.0 */))
-      .addGrid(lr.fitIntercept)
+      .addGrid(lr.regParam, Array(0.01 /*, 0.1 , 1.0 */))
+      .addGrid(lr.elasticNetParam, Array(0.0 /*, 0.5 , 1.0 */))
+      .addGrid(lr.fitIntercept, Array(false /*, true */))
       .build()
 
     val cv = new CrossValidator()
       .setEstimator(pipeline)
-      .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
+//      .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
+      .setEvaluator(new LogLossEvaluator())
       .setEstimatorParamMaps(paramGrid)
       .setNumFolds(3)
 
@@ -89,7 +90,6 @@ object CtrDemo {
 
     //    val header = sql.sparkContext.parallelize(Seq("id,click"))
 
-    // TODO: to save to a single file
     val outFile = outPredictionDir + "/kaggle_prediction_" + new SimpleDateFormat("dMMMHHmm").format(new Date())
     predictionRdd.saveAsTextFile(outFile)
 
@@ -212,7 +212,8 @@ object CtrDemo {
 
     unionDf.cache()
 
-    categoricalColumns.foldLeft(trainDf -> testDf) { case ((df1, df2), col) => encodeLabel(unionDf, df1, df2, col) }
+    val res = categoricalColumns.foldLeft(trainDf -> testDf) { case ((df1, df2), col) => encodeLabel(unionDf, df1, df2, col) }
+    res
   }
 
   def transformHour(df: DataFrame): DataFrame = {
