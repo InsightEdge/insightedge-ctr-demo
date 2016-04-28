@@ -13,7 +13,7 @@ The revenue search engine can get is essentially:
 
 `Revenue = ad_bid * probability_of_click`
 
-The goal is to maximize the revenue for every search engine query. Whereis the `ad bid` is a known value, the `probability of click` is not. Thus predicting the probability of click becomes the key challenge.
+The goal is to maximize the revenue for every search engine query. Whereis the `ad_bid` is a known value, the `probability_of_click` is not. Thus predicting the probability of click becomes the key challenge.
 
 ## Understanding the data
 
@@ -37,7 +37,8 @@ We use databricks csv library to load csv files from hdfs into Spark dataframe:
 z.load("com.databricks:spark-csv_2.10:1.3.0")
 ```
 
-![Alt](img/1_dep_load.png?raw=true "Dependency load")
+load and cache the dataframe:
+
 
 ```scala
 val df = sqlContext.read
@@ -48,9 +49,6 @@ val df = sqlContext.read
 
 df.cache()
 ```
-
-![Alt](img/2_csv_load_cache.png?raw=true "Csv load")
-
 Now we can show some data:
 
 ```scala
@@ -59,11 +57,43 @@ df.show(10)
 
 ![Alt](img/3_df_show.png?raw=true "Df show")
 
+The data fields are:
 
+* id: ad identifier
+* click: 0/1 for non-click/click
+* hour: format is YYMMDDHH
+* C1 -- anonymized categorical variable
+* banner_pos
+* site_id
+* site_domain
+* site_category
+* app_id
+* app_domain
+* app_category
+* device_id
+* device_ip
+* device_model
+* device_type
+d* evice_conn_type
+* C14-C21 -- anonymized categorical variables
 
+Let's see how many rows in the traning dataset:
 
+```scala
+val totalCount = df.count()
+```
+![Alt](img/4_df_count.png?raw=true "Df count")
 
+Let's calculate the CTR(click-through rate) of the dataset. The click-through rate is the number of times a click is made on the advertisement divided by the total impressions (the number of times an advertisement was served):
 
+```scala
+val clicks = df.filter("click = 1").count()
+val ctr = clicks.toFloat / totalCount
+```
+
+![Alt](img/5_calc_ctr.png?raw=true "Calc CTR")
+
+We can see the the CTR is 0.169 (or 16.9%) which is quite high number, the common numbers in industry are about 0.2-0.3%. Avazu explains this high number by specific way of data sampling, which appears to be nonuniform.
 
 
 
