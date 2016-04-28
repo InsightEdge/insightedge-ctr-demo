@@ -11,11 +11,6 @@ The revenue search engine can get is essentially:
 Revenue = (ad bid) * (probability of click).
 The goal is to maximize the revenue for every search engine query. Whereis the `ad bid` is a known value, the `probability of click` is not. Thus predicting the probability of click becomes the key challenge.
 
-## del it
-The probability of a click is known as click-through rate (CTR). The CTR of an advertisement is defined as the number of clicks on an ad divided by the number of times the ad is shown (impressions), expressed as a percentage. For example, if a banner ad is delivered 100 times (100 impressions) and receives one click, then the click-through rate for the advertisement would be 1%.
-[CTR formula image here https://upload.wikimedia.org/math/3/c/3/3c386c95782238666a0ca05c3079c8d5.png]
-## del it
-
 ## Understanding the data
 
 The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
@@ -25,7 +20,7 @@ The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
 The first things we want to do is to launch InsightEdge. To get the first data insights quickly, one can [launch InsightEdge on a local machine](http://insightedge.io/docs/010/0_quick_start.html).
 Though for the big datasets or compute-intensive tasks the resources of a single machine are not enough, so we have to scale our computation among number of machines. For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_cluster_setup.html) with four slaves, the downloaded files are placed on HDFS.
 
-[cluster img]
+![Alt cluster](img/0_cluster.png?raw=true "Cluster")
 
 Let's open [Web Notebook](http://insightedge.io/docs/010/14_notebook.html) and load the data. We will use databricks csv library to load csv files from hdfs:
 
