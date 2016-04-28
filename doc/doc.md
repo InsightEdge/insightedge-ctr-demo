@@ -6,9 +6,13 @@ In this blog post we will look how to use machine learning algorithms with Insig
 
 There are several compensation models in online advertising industry, probably the most notable is CPC (Cost Per Click), in which an advertiser pays a publisher when the ad is clicked.
 Search engine advertising is one of the most popular forms of CPC. It allows advertisers to bid for ad placement in a search engine's sponsored links when someone searches on a keyword that is related to their business offering.
+
 For the search engines like Google advertising became the key source of their revenue. The challenge for the advertising system is to determine what ad should be displayed for each query search engine receives.
+
 The revenue search engine can get is essentially:
-Revenue = (ad bid) * (probability of click).
+
+`Revenue = ad_bid * probability_of_click`
+
 The goal is to maximize the revenue for every search engine query. Whereis the `ad bid` is a known value, the `probability of click` is not. Thus predicting the probability of click becomes the key challenge.
 
 ## Understanding the data
@@ -18,18 +22,22 @@ The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
 * test (674M) - Test set. 1 day of ads to for testing model predictions.
 
 The first things we want to do is to launch InsightEdge. To get the first data insights quickly, one can [launch InsightEdge on a local machine](http://insightedge.io/docs/010/0_quick_start.html).
-Though for the big datasets or compute-intensive tasks the resources of a single machine are not enough, so we have to scale our computation among number of machines. For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_cluster_setup.html) with four slaves, the downloaded files are placed on HDFS.
+Though for the big datasets or compute-intensive tasks the resources of a single machine are not enough, so we have to scale our computation among number of machines.
+
+For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_cluster_setup.html) with four slaves, the downloaded files are placed on HDFS.
 
 ![Alt cluster](img/0_cluster.png?raw=true "Cluster")
 
-Let's open [Web Notebook](http://insightedge.io/docs/010/14_notebook.html) and load the data. We will use databricks csv library to load csv files from hdfs:
+Let's open the [Web Notebook](http://insightedge.io/docs/010/14_notebook.html).
+
+We use databricks csv library to load csv files from hdfs into Spark dataframe:
 
 ```scala
 %dep
 z.load("com.databricks:spark-csv_2.10:1.3.0")
 ```
 
-[img #1]
+![Alt](img/1_dep_load.png?raw=true "Dependency load")
 
 ```scala
 val df = sqlContext.read
@@ -39,13 +47,17 @@ val df = sqlContext.read
       .load("hdfs://10.8.1.116/data/avazu_ctr/train")
 
 df.cache()
+```
+
+![Alt](img/2_csv_load_cache.png?raw=true "Csv load")
+
+Now we can show some data:
+
 ```scala
+df.show(10)
+```
 
-[img #2]
-
-Let's get some data:
-
-[img #3]
+![Alt](img/3_df_show.png?raw=true "Df show")
 
 
 
