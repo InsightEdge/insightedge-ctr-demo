@@ -1,6 +1,7 @@
 package io.insightedge.demo.ctr
 
 import java.lang.Double
+import java.text.SimpleDateFormat
 
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
 import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS
@@ -18,9 +19,13 @@ import scala.util.Try
   */
 object Test {
 
-  def main(args: Array[String]) = {
+  def main(args: Array[String]): Unit = {
 
-    Utils.zipPredictionFile("/home/pivot/mm.cfg", "/home/pivot/mm.zip")
+//    Utils.zipPredictionFile("/home/pivot/mm.cfg", "/home/pivot/mm.zip")
+
+
+    val df = new SimpleDateFormat("dMMMHH:mm")
+    println(df.format(new java.util.Date()))
 
 
   }

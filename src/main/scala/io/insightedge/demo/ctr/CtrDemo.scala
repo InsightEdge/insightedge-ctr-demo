@@ -7,15 +7,11 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, VectorAssembler}
-import org.apache.spark.ml.tuning.{CrossValidatorModel, CrossValidator, ParamGridBuilder}
-import org.apache.spark.mllib.classification.LogisticRegressionModel
-import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
+import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
 import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable.ListBuffer
@@ -23,18 +19,22 @@ import scala.collection.mutable.ListBuffer
 /**
   * @author Oleksiy_Dyagilev
   */
-object Main {
+object CtrDemo {
 
   def main(args: Array[String]) = {
 
+    if (args.length < 3) {
+      System.err.println("Usage: CtrDemo <spark master url> <trainCsvPath> <testCsvPath> <outPredictionDir>")
+      System.exit(1)
+    }
+
+    val Array(master, trainCsvPath, testCsvPath, outPredictionDir) = args
+
     val startTime = System.currentTimeMillis()
 
-    val trainCsvPath = "/home/pivot/Downloads/avazu-ctr/train_1M"
-    val testCsvPath = "/home/pivot/Downloads/avazu-ctr/test"
+    val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster(master))
 
-    val sc = new SparkContext(new SparkConf().setAppName("CTR").setMaster("local[*]"))
-
-    sc.setLogLevel("ERROR")
+    //    sc.setLogLevel("ERROR")
 
     val sql = new SQLContext(sc)
 
@@ -46,29 +46,6 @@ object Main {
       transformHour(rawTestDf)
     )
 
-    //    val Array(training, validation) = assembleFeatures(encodedTrainDf)
-    //      .select("features", "click")
-    //      .map(rowToLabelPoint)
-    //      .randomSplit(Array(0.8, 0.2), seed = 17)
-
-    // train
-
-    //    val model = new LogisticRegressionWithLBFGS()
-    //      .setNumClasses(2)
-    //      .run(training)
-    //
-    //    // Clear the prediction threshold so the model will return probabilities
-    //    model.clearThreshold
-    //
-    //    // Compute raw scores on the test set.
-    //    val predictionAndLabels = validation.map { case LabeledPoint(label, features) =>
-    //      val prediction = model.predict(features)
-    //      (prediction, label)
-    //    }
-    //
-    //    calcMetrics(predictionAndLabels)
-
-
     //    val hourTransformer = new HourTransformer()
     val assembler = new VectorAssembler()
       .setInputCols(categoricalColumnsVectors.toArray)
@@ -79,46 +56,54 @@ object Main {
     val pipeline = new Pipeline().setStages(Array(assembler, lr))
 
     val paramGrid = new ParamGridBuilder()
-      //      .addGrid(lr.regParam, Array(0.1, 0.01))
-      .addGrid(lr.regParam, Array(0.01))
+      .addGrid(lr.regParam, Array(0.01, 0.1 /*, 1.0 */))
+      .addGrid(lr.elasticNetParam, Array(0.0, 0.5 /*, 1.0 */))
+      .addGrid(lr.fitIntercept)
       .build()
 
     val cv = new CrossValidator()
       .setEstimator(pipeline)
       .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(2) // Use 3+ in practice
+      .setNumFolds(3)
 
     val cvModel = cv.fit(encodedTrainDf)
 
-    cvModel.avgMetrics.foreach(m => println("METRICS = " + m))
-
-    cvModel.save("/home/pivot/Downloads/avazu-ctr/test_out_" + new Date() + "_model")
+    //    cvModel.save(outPredictionDir + "/test_out_" + new Date() + "_model")
 
     // predict Kaggle test data
-    kaggleTest(sql, cvModel, encodedTestDf)
+    kaggleTest(sql, cvModel, encodedTestDf, outPredictionDir)
 
     val endTime = System.currentTimeMillis()
     println("time taken(s): " + (endTime - startTime) / 1000)
   }
 
-  def rowToLabelPoint(r: Row) = LabeledPoint(r.getAs[Int]("click").toDouble, r.getAs[Vector]("features"))
-
-  def kaggleTest(sql: SQLContext, cvModel: CrossValidatorModel, encodedTestDf: DataFrame) = {
+  def kaggleTest(sql: SQLContext, cvModel: CrossValidatorModel, encodedTestDf: DataFrame, outPredictionDir: String) = {
 
     val predictionRdd = cvModel.transform(encodedTestDf).map { r =>
       val id = r.getAs[String]("id")
-      val probVector =  r.getAs[Vector]("probability")
+      val probVector = r.getAs[Vector]("probability")
       val clickProb = probVector(1)
       s"$id,$clickProb"
     }
 
-    val header = sql.sparkContext.parallelize(Seq("id,click"))
+    //    val header = sql.sparkContext.parallelize(Seq("id,click"))
 
     // TODO: to save to a single file
-    val outDir = "/home/pivot/Downloads/avazu-ctr/test_out_" + new Date()
-    (header ++ predictionRdd).repartition(1).saveAsTextFile(outDir)
-    Utils.zipPredictionFile(outDir + "/part-00000", outDir + "/prediction.zip")
+    val outFile = outPredictionDir + "/kaggle_prediction_" + new SimpleDateFormat("dMMMHHmm").format(new Date())
+    predictionRdd.saveAsTextFile(outFile)
+
+    println("=======")
+    cvModel.avgMetrics.foreach(m => println("METRICS = " + m))
+
+    println("best params" + cvModel.getEstimatorParamMaps
+      .zip(cvModel.avgMetrics)
+      .maxBy(_._2)
+      ._1)
+    println("=======")
+
+
+    //    Utils.zipPredictionFile(outFile + "/part-00000", outFile + "/prediction.zip")
     println("done")
   }
 
@@ -133,7 +118,7 @@ object Main {
       df("id"),
       //      df("device_id"),
       //      df("device_ip"),
-      df("device_model"),
+      //      df("device_model"),
       df("device_type"),
       df("device_conn_type"),
       df("hour"),
@@ -143,9 +128,9 @@ object Main {
       //      df("site_domain"),
       df("site_category"),
       //      df("app_id"),
-      df("app_domain"),
+      //      df("app_domain"),
       df("app_category"),
-      df("C14"),
+      //      df("C14"),
       df("C15"),
       df("C16"),
       df("C17"),
@@ -154,6 +139,8 @@ object Main {
       df("C20"),
       df("C21")
     )
+
+    df.registerTempTable("training")
 
     // click col is only in train dataset, it's missing in the test dataset, but we want to keep the schema the same
     // so we can union datasets later, so for test dataset we add fictive 'click' col
@@ -190,7 +177,7 @@ object Main {
   val categoricalColumns = Seq(
     //    "device_id",
     //    "device_ip",
-    "device_model",
+    //    "device_model",
     "device_type",
     "device_conn_type",
     "time_year",
@@ -203,9 +190,9 @@ object Main {
     //    "site_domain",
     "site_category",
     //    "app_id",
-    "app_domain",
+    //    "app_domain",
     "app_category",
-    "C14",
+    //    "C14",
     "C15",
     "C16",
     "C17",
@@ -217,40 +204,13 @@ object Main {
   val categoricalColumnsVectors = categoricalColumns.map(_ + "_vector")
 
   def encodeLabels(trainDf: DataFrame, testDf: DataFrame): (DataFrame, DataFrame) = {
-    // TODO: ???
     trainDf.cache()
     testDf.cache()
-
-    // add fictive 'click' column to testDf so we can union them
-    //    val unionDf = trainDf.unionAll(
-    //      testDf.withColumn("click", lit(0))
-    //    )
 
     // remove 'click' column so we can union them correctly
     val unionDf = trainDf.unionAll(testDf)
 
     unionDf.cache()
-
-    //    println("testDf size is " + testDf.count())
-    //    println("trainDf size is " + trainDf.count())
-    //    println("unionDf size: " + unionDf.count())
-    //
-    //    println("testDf: start ======")
-    //    testDf.show(100)
-    //    println("testDf: end ======")
-    //
-    //    println("trainDf: start ======")
-    //    trainDf.show(100)
-    //    println("trainDf: end ======")
-    //
-    //    println("unionDf: start ======")
-    //    unionDf.show(100)
-    //    println("unionDf: end ======")
-    //
-    //    println("uniton print start======")
-    //    unionDf.foreach(println)
-    //    println("uniton print end======")
-
 
     categoricalColumns.foldLeft(trainDf -> testDf) { case ((df1, df2), col) => encodeLabel(unionDf, df1, df2, col) }
   }
@@ -265,53 +225,7 @@ object Main {
       .withColumn("time_month", toMonth(df("hour")))
       .withColumn("time_day", toDay(df("hour")))
       .withColumn("time_hour", toHour(df("hour")))
-  }
-
-
-  def calcMetrics(predictionAndLabels: RDD[(Double, Double)]): Unit = {
-    // Instantiate metrics object
-    val metrics = new BinaryClassificationMetrics(predictionAndLabels)
-
-    // Precision by threshold
-    //    val precision = metrics.precisionByThreshold
-    //    precision.foreach { case (t, p) =>
-    //      println(s"Threshold: $t, Precision: $p")
-    //    }
-    //
-    //    // Recall by threshold
-    //    val recall = metrics.recallByThreshold
-    //    recall.foreach { case (t, r) =>
-    //      println(s"Threshold: $t, Recall: $r")
-    //    }
-    //
-    //    // Precision-Recall Curve
-    //    val PRC = metrics.pr
-    //
-    //    // F-measure
-    //    val f1Score = metrics.fMeasureByThreshold
-    //    f1Score.foreach { case (t, f) =>
-    //      println(s"Threshold: $t, F-score: $f, Beta = 1")
-    //    }
-    //
-    //    val beta = 0.5
-    //    val fScore = metrics.fMeasureByThreshold(beta)
-    //    f1Score.foreach { case (t, f) =>
-    //      println(s"Threshold: $t, F-score: $f, Beta = 0.5")
-    //    }
-    //
-    //    // AUPRC
-    //    val auPRC = metrics.areaUnderPR
-    //    println("Area under precision-recall curve = " + auPRC)
-    //
-    //    // Compute thresholds used in ROC and PR curves
-    //    val thresholds = precision.map(_._1)
-    //
-    //    // ROC Curve
-    //    val roc = metrics.roc
-
-    // AUROC
-    val auROC = metrics.areaUnderROC
-    println("Area under ROC = " + auROC)
+      .drop("hour")
   }
 
   object DateUtils {

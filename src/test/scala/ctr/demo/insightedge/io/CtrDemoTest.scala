@@ -1,12 +1,12 @@
 package ctr.demo.insightedge.io
 
-import io.insightedge.demo.ctr.Main.DateUtils
+import io.insightedge.demo.ctr.CtrDemo.DateUtils
 import org.scalatest.FunSuite
 
 /**
   * @author Oleksiy_Dyagilev
   */
-class MainTest extends FunSuite {
+class CtrDemoTest extends FunSuite {
 
 
   test("DateUtils parse") {
