@@ -17,7 +17,8 @@ The goal is to maximize the revenue for every search engine query. Whereis the `
 
 Working on machine learning problems involve a lot of experiments with feature selection, feature transformation, training different models and tuning parameters.
 While there are a few excellent machine learning libraries for Python and R like scikit-learn, their capabilities are typically limited to relatively small datasets that you can fit into a single machine.
-With large datasets and/or CPU intensive workloads you may want to scale out beyond a single machine. And this is not a problem for InsightEdge at all, since it can scale the computation and data storage layers across many machines in the cluster.
+
+With the large datasets and/or CPU intensive workloads you may want to scale out beyond a single machine. And this is not a problem for InsightEdge at all, since it can scale the computation and data storage layers across many machines in the cluster.
 
 ## Exploring the data
 
