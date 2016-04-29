@@ -192,23 +192,19 @@ object DateUtils {
     override def initialValue(): SimpleDateFormat = new SimpleDateFormat("yyMMddHH")
   }
 
-  def parse(s: String): (Int, Int, Int, Int) = {
+  def parse(s: String, field: Int): Int = {
     val date = dateFormat.get().parse(s)
     val cal = Calendar.getInstance()
     cal.setTime(date)
-    val year = cal.get(Calendar.YEAR)
-    val month = cal.get(Calendar.MONTH)
-    val day = cal.get(Calendar.DAY_OF_MONTH)
-    val hour = cal.get(Calendar.HOUR_OF_DAY)
-    (year, month, day, hour)
+    cal.get(field)
   }
 }
 
 def transformHour(df: DataFrame): DataFrame = {
-  val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
-  val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
-  val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
-  val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
+  val toYear = udf[Int, String](s => DateUtils.parse(s, Calendar.YEAR))
+  val toMonth = udf[Int, String](s => DateUtils.parse(s, Calendar.MONTH))
+  val toDay = udf[Int, String](s => DateUtils.parse(s, Calendar.DAY_OF_MONTH))
+  val toHour = udf[Int, String](s => DateUtils.parse(s, Calendar.HOUR_OF_DAY))
 
   df.withColumn("time_year", toYear(df("hour")))
   .withColumn("time_month", toMonth(df("hour")))
