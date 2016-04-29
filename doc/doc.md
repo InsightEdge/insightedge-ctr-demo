@@ -20,7 +20,7 @@ While there are a few excellent machine learning libraries for Python and R like
 
 With the large datasets and/or CPU intensive workloads you may want to scale out beyond a single machine. And this is not a problem for InsightEdge at all, since it can scale the computation and data storage layers across many machines in the cluster.
 
-## Exploring the data
+## Loading the data
 
 The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
 * train (5.9G) - Training set. 10 days of click-through data, ordered chronologically. Non-clicks and clicks are subsampled according to different strategies.
@@ -44,8 +44,7 @@ The dataset is in csv format, so we will use databricks csv library to load it f
 z.load("com.databricks:spark-csv_2.10:1.3.0")
 ```
 
-load and cache the dataframe:
-
+load the dataframe into Spark memory and cache:
 
 ```scala
 val df = sqlContext.read
@@ -57,7 +56,27 @@ val df = sqlContext.read
 df.cache()
 ```
 
-Now that's the dataset is cached in Spark memory, we can read the first rows:
+The next thing we want to do is to copy the dataset to in-memory datagrid that is running collocated with the Spark.
+This way we can restart Zeppelin session or launch another Spark applications and pick up the dataset more quicker from the memory.
+
+With InsightEdge this can be done just with two lines of code:
+
+```scala
+import org.apache.spark.sql.insightedge._
+df.write.grid.save("raw_training")
+```
+
+Any time later we can bring "raw_training" collection to Spark memory with:
+```scala
+val df = sqlContext.read.grid.load("raw_training")
+```
+
+As we will show later, when developing applications with InsightEdge, the datagrid can be the primary datasource for your
+Spark applications, eliminating the need of ETL phase, and at the same time serve low latency transactional operations.
+
+## Exploring the data
+
+Now that we have the dataset in Spark memory, we can read the first rows:
 
 ```scala
 df.show(10)
@@ -157,7 +176,7 @@ We see that there are some features with a lot of unique values, for example `de
 Usually machine learning algorithms expect to work with numbers, rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
 We will need to deal with this later.
 
-# Transforming features
+# Processing and transforming the data
 
 
 
