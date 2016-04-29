@@ -15,6 +15,10 @@ The revenue search engine can get is essentially:
 
 The goal is to maximize the revenue for every search engine query. Whereis the `ad_bid` is a known value, the `probability_of_click` is not. Thus predicting the probability of click becomes the key task.
 
+Working on machine learning problems involve a lot of experiments with feature selection, feature transformation, training different models and tuning parameters.
+While there are a few excellent machine learning libraries for Python and R like scikit-learn, their capabilities are typically limited to relatively small datasets that you can fit into a single machine.
+With large datasets and/or CPU intensive workloads you may want to scale out beyond a single machine. And this is not a problem for InsightEdge at all, since it can scale the computation and data storage layers across many machines in the cluster.
+
 ## Exploring the data
 
 The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
@@ -23,8 +27,8 @@ The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
 
 The first things we want to do is to launch InsightEdge.
 
-To get the first data insights quickly, one can [launch InsightEdge on a local machine](http://insightedge.io/docs/010/0_quick_start.html).
-Though for the big datasets or compute-intensive tasks the resources of a single machine are not enough, so we have to scale our computation among number of machines.
+To get the first data insights quickly, one can [launch InsightEdge on a laptop](http://insightedge.io/docs/010/0_quick_start.html).
+Though for the big datasets or compute-intensive tasks the resources of a single machine might not be enough.
 
 For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_cluster_setup.html) with four slaves and place the downloaded files on HDFS.
 
@@ -80,7 +84,7 @@ The data fields are:
 * device_conn_type
 * C14-C21 -- anonymized categorical variables
 
-Let's see how many rows in the traning dataset:
+Let's see how many rows in the training dataset:
 
 ```scala
 val totalCount = df.count()
@@ -138,7 +142,7 @@ ORDER BY ctr DESC
 
 ![Alt](img/11_banner_dimension.png?raw=true "banner dimension")
 
-We can notice some correlation between the ad size and its performance. The most common one appears to be 320x50px known as "mobile leaderboard" in [Google AdSense guide](https://support.google.com/adsense/answer/68727?hl=en)
+We can notice some correlation between the ad size and its performance. The most common one appears to be 320x50px known as "mobile leaderboard" in [Google AdSense](https://support.google.com/adsense/answer/68727?hl=en)
 
 
 
