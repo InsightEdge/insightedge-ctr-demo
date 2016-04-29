@@ -30,7 +30,7 @@ For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_clu
 
 ![Alt cluster](img/0_cluster.png?raw=true "Cluster")
 
-Let's open the interactive [Web Notebook](http://insightedge.io/docs/010/14_notebook.html) to explore our dataset.
+Let's open the interactive [Web Notebook](http://insightedge.io/docs/010/14_notebook.html) and start exploring our dataset.
 
 The dataset is in csv format, so we will use databricks csv library to load it from hdfs into Spark dataframe:
 
@@ -88,7 +88,7 @@ val totalCount = df.count()
 totalCount: Long = 40428967
 ```
 
-There are about 40 million rows in the dataset.
+There are about 40M+ rows in the dataset.
 
 Let's now calculate the CTR(click-through rate) of the dataset. The click-through rate is the number of times a click is made on the advertisement divided by the total impressions (the number of times an advertisement was served):
 
@@ -123,6 +123,24 @@ GROUP BY device_conn_type
 ![Alt](img/6_device_conn_type.png?raw=true "device_conn_type")
 
 ![Alt](img/7_device_conn_type_2.png?raw=true "device_conn_type")
+
+We see that there are four connection type categories. Two categories with CTR 18% and 13%, and the first one is almost 90% of the whole dataset. The other two categories have significantly lower CTR.
+
+Another observation we may notice is that features C15 and C16 look like the ad size:
+
+```sql
+%sql
+SELECT C15, C16, COUNT(click) as impression, SUM(click)/COUNT(click) as ctr
+FROM training
+GROUP BY C15, C16
+ORDER BY ctr DESC
+```
+
+![Alt](img/11_banner_dimension.png?raw=true "banner dimension")
+
+We can notice some correlation between the ad size and its performance. The most common one appears to be 320x50px known as "mobile leaderboard" in [Google AdSense guide](https://support.google.com/adsense/answer/68727?hl=en)
+
+
 
 
 # Processing and transforming the data
