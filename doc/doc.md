@@ -178,6 +178,53 @@ We will need to deal with this later.
 
 # Processing and transforming the data
 
+Looking further at the dataset, we can see that the `hour` feature is encoded with `YYMMDDHH`.
+To allow the predictive model effectively learn from this feature it make sense to transform it into four features: `year`, `month` and `hour`.
+Let's develop the function to transform the dataframe:
+
+```scala
+import java.text.SimpleDateFormat
+import java.util.{Calendar, Date}
+import org.apache.spark.sql.DataFrame
+
+object DateUtils {
+val dateFormat = new ThreadLocal[SimpleDateFormat]() {
+  override def initialValue(): SimpleDateFormat = new SimpleDateFormat("yyMMddHH")
+}
+
+def parse(s: String): (Int, Int, Int, Int) = {
+  val date = dateFormat.get().parse(s)
+  val cal = Calendar.getInstance()
+  cal.setTime(date)
+  val year = cal.get(Calendar.YEAR)
+  val month = cal.get(Calendar.MONTH)
+  val day = cal.get(Calendar.DAY_OF_MONTH)
+  val hour = cal.get(Calendar.HOUR_OF_DAY)
+  (year, month, day, hour)
+}
+}
+
+def transformHour(df: DataFrame): DataFrame = {
+val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
+val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
+val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
+val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
+
+df.withColumn("time_year", toYear(df("hour")))
+  .withColumn("time_month", toMonth(df("hour")))
+  .withColumn("time_day", toDay(df("hour")))
+  .withColumn("time_hour", toHour(df("hour")))
+}
+```
+
+We can now apply this transformation to our dataframe and see the result:
+
+```scala
+transformHour(df).show()
+```
+
+![Alt](img/12_hour_transform.png?raw=true "banner dimension")
+
 
 
 
