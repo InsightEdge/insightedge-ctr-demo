@@ -11,9 +11,9 @@ For the search engines like Google advertising became the key source of their re
 
 The revenue search engine can get is essentially:
 
-`Revenue = ad_bid * probability_of_click`
+`Revenue = bid * probability_of_click`
 
-The goal is to maximize the revenue for every search engine query. Whereis the `ad_bid` is a known value, the `probability_of_click` is not. Thus predicting the probability of click becomes the key task.
+The goal is to maximize the revenue for every search engine query. Whereis the `bid` is a known value, the `probability_of_click` is not. Thus predicting the probability of click becomes the key task.
 
 Working on machine learning problems involve a lot of experiments with feature selection, feature transformation, training different models and tuning parameters.
 While there are a few excellent machine learning libraries for Python and R like scikit-learn, their capabilities are typically limited to relatively small datasets that you can fit into a single machine.
@@ -57,7 +57,7 @@ val df = sqlContext.read
 df.cache()
 ```
 
-Now that's the dataset is cached in Spark memory, we can read first rows:
+Now that's the dataset is cached in Spark memory, we can read the first rows:
 
 ```scala
 df.show(10)
@@ -145,6 +145,17 @@ ORDER BY ctr DESC
 
 We can notice some correlation between the ad size and its performance. The most common one appears to be 320x50px known as "mobile leaderboard" in [Google AdSense](https://support.google.com/adsense/answer/68727?hl=en)
 
+What about other features? All of them represent categorical values, how many unique categories for each feature?
+
+```scala
+df.columns.map(c => (c, df.select(c).distinct().count()))
+
+res14: Array[(String, Long)] = Array((id,40428967), (click,2), (hour,240), (C1,7), (banner_pos,7), (site_id,4737), (site_domain,7745), (site_category,26), (app_id,8552), (app_domain,559), (app_category,36), (device_id,2686408), (device_ip,6729486), (device_model,8251), (device_type,5), (device_conn_type,4), (C14,2626), (C15,8), (C16,9), (C17,435), (C18,4), (C19,68), (C20,172), (C21,60))
+```
+
+We see that there are some features with a lot of unique values, for example device_ip has 6M+ unique values.
+Usually machine learning algorithms expect to work with numbers, rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
+We will need to deal with this later.
 
 
 
