@@ -15,7 +15,7 @@ The revenue search engine can get is essentially:
 
 The goal is to maximize the revenue for every search engine query. Whereis the `bid` is a known value, the `probability_of_click` is not. Thus predicting the probability of click becomes the key task.
 
-Working on machine learning problems involve a lot of experiments with feature selection, feature transformation, training different models and tuning parameters.
+Working on machine learning problem involves a lot of experiments with feature selection, feature transformation, training different models and tuning parameters.
 While there are a few excellent machine learning libraries for Python and R like scikit-learn, their capabilities are typically limited to relatively small datasets that you can fit into a single machine.
 
 With the large datasets and/or CPU intensive workloads you may want to scale out beyond a single machine. And this is not a problem for InsightEdge at all, since it can scale the computation and data storage layers across many machines in the cluster.
@@ -188,29 +188,29 @@ import java.util.{Calendar, Date}
 import org.apache.spark.sql.DataFrame
 
 object DateUtils {
-val dateFormat = new ThreadLocal[SimpleDateFormat]() {
-  override def initialValue(): SimpleDateFormat = new SimpleDateFormat("yyMMddHH")
-}
+  val dateFormat = new ThreadLocal[SimpleDateFormat]() {
+    override def initialValue(): SimpleDateFormat = new SimpleDateFormat("yyMMddHH")
+  }
 
-def parse(s: String): (Int, Int, Int, Int) = {
-  val date = dateFormat.get().parse(s)
-  val cal = Calendar.getInstance()
-  cal.setTime(date)
-  val year = cal.get(Calendar.YEAR)
-  val month = cal.get(Calendar.MONTH)
-  val day = cal.get(Calendar.DAY_OF_MONTH)
-  val hour = cal.get(Calendar.HOUR_OF_DAY)
-  (year, month, day, hour)
-}
+  def parse(s: String): (Int, Int, Int, Int) = {
+    val date = dateFormat.get().parse(s)
+    val cal = Calendar.getInstance()
+    cal.setTime(date)
+    val year = cal.get(Calendar.YEAR)
+    val month = cal.get(Calendar.MONTH)
+    val day = cal.get(Calendar.DAY_OF_MONTH)
+    val hour = cal.get(Calendar.HOUR_OF_DAY)
+    (year, month, day, hour)
+  }
 }
 
 def transformHour(df: DataFrame): DataFrame = {
-val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
-val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
-val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
-val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
+  val toYear = udf[Int, String](s => DateUtils.parse(s)._1)
+  val toMonth = udf[Int, String](s => DateUtils.parse(s)._2)
+  val toDay = udf[Int, String](s => DateUtils.parse(s)._3)
+  val toHour = udf[Int, String](s => DateUtils.parse(s)._4)
 
-df.withColumn("time_year", toYear(df("hour")))
+  df.withColumn("time_year", toYear(df("hour")))
   .withColumn("time_month", toMonth(df("hour")))
   .withColumn("time_day", toDay(df("hour")))
   .withColumn("time_hour", toHour(df("hour")))
