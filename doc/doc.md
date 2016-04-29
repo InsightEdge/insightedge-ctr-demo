@@ -210,20 +210,40 @@ def transformHour(df: DataFrame): DataFrame = {
   .withColumn("time_month", toMonth(df("hour")))
   .withColumn("time_day", toDay(df("hour")))
   .withColumn("time_hour", toHour(df("hour")))
+  .drop("hour")
 }
 ```
 
 We can now apply this transformation to our dataframe and see the result:
 
 ```scala
-transformHour(df).show()
+val trainingHourDecoded = transformHour(df)
+trainingHourDecoded.cache()
+trainingHourDecoded.show()
 ```
 
 ![Alt](img/12_hour_transform.png?raw=true "banner dimension")
 
+It looks like the year and month have only the single value, let's verify it:
 
+```scala
+trainingHourDecoded.select("time_month").distinct.count()
+trainingHourDecoded.select("time_year").distinct.count()
 
+res20: Long = 1
+res21: Long = 1
+```
 
+We can safely drop these columns as they don't bring any knowledge to our model:
+
+```scala
+val trainingHourDecoded2 = trainingHourDecoded.drop("time_month").drop("time_year")
+```
+
+Since we now have the transformed dataset, we can remove the raw dataset from the Spark cache:
+```scala
+df.unpersist()
+```
 
 
 
