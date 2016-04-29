@@ -233,18 +233,34 @@ def transformHour(df: DataFrame): DataFrame = {
 We can now apply this transformation to our dataframe and see the result:
 
 ```scala
-val trainingHourDecoded = transformHour(df)
-trainingHourDecoded.cache()
-trainingHourDecoded.show()
+val hourDecoded = transformHour(df)
+hourDecoded.cache()
+hourDecoded.show(10)
 ```
 
-![Alt](img/12_hour_transform.png?raw=true "banner dimension")
+```
++--------------------+-----+----+----------+--------+-----------+-------------+--------+----------+------------+---------+---------+------------+-----------+----------------+-----+---+---+----+---+---+------+---+---------+----------+--------+---------+
+|                  id|click|  C1|banner_pos| site_id|site_domain|site_category|  app_id|app_domain|app_category|device_id|device_ip|device_model|device_type|device_conn_type|  C14|C15|C16| C17|C18|C19|   C20|C21|time_year|time_month|time_day|time_hour|
++--------------------+-----+----+----------+--------+-----------+-------------+--------+----------+------------+---------+---------+------------+-----------+----------------+-----+---+---+----+---+---+------+---+---------+----------+--------+---------+
+| 1000009418151094273|    0|1005|         0|1fbe01fe|   f3845767|     28905ebd|ecad2386|  7801e8d9|    07d7df22| a99f214a| ddd2926e|    44956a24|          1|               2|15706|320| 50|1722|  0| 35|    -1| 79|     2014|         9|      21|        0|
+|10000169349117863715|    0|1005|         0|1fbe01fe|   f3845767|     28905ebd|ecad2386|  7801e8d9|    07d7df22| a99f214a| 96809ac8|    711ee120|          1|               0|15704|320| 50|1722|  0| 35|100084| 79|     2014|         9|      21|        0|
+|10000371904215119486|    0|1005|         0|1fbe01fe|   f3845767|     28905ebd|ecad2386|  7801e8d9|    07d7df22| a99f214a| b3cf8def|    8a4875bd|          1|               0|15704|320| 50|1722|  0| 35|100084| 79|     2014|         9|      21|        0|
+|10000640724480838376|    0|1005|         0|1fbe01fe|   f3845767|     28905ebd|ecad2386|  7801e8d9|    07d7df22| a99f214a| e8275b8f|    6332421a|          1|               0|15706|320| 50|1722|  0| 35|100084| 79|     2014|         9|      21|        0|
+|10000679056417042096|    0|1005|         1|fe8cc448|   9166c161|     0569f928|ecad2386|  7801e8d9|    07d7df22| a99f214a| 9644d0bf|    779d90c2|          1|               0|18993|320| 50|2161|  0| 35|    -1|157|     2014|         9|      21|        0|
+|10000720757801103869|    0|1005|         0|d6137915|   bb1ef334|     f028772b|ecad2386|  7801e8d9|    07d7df22| a99f214a| 05241af0|    8a4875bd|          1|               0|16920|320| 50|1899|  0|431|100077|117|     2014|         9|      21|        0|
+|10000724729988544911|    0|1005|         0|8fda644b|   25d4cfcd|     f028772b|ecad2386|  7801e8d9|    07d7df22| a99f214a| b264c159|    be6db1d7|          1|               0|20362|320| 50|2333|  0| 39|    -1|157|     2014|         9|      21|        0|
+|10000918755742328737|    0|1005|         1|e151e245|   7e091613|     f028772b|ecad2386|  7801e8d9|    07d7df22| a99f214a| e6f67278|    be74e6fe|          1|               0|20632|320| 50|2374|  3| 39|    -1| 23|     2014|         9|      21|        0|
+|10000949271186029916|    1|1005|         0|1fbe01fe|   f3845767|     28905ebd|ecad2386|  7801e8d9|    07d7df22| a99f214a| 37e8da74|    5db079b5|          1|               2|15707|320| 50|1722|  0| 35|    -1| 79|     2014|         9|      21|        0|
+|10001264480619467364|    0|1002|         0|84c7ba46|   c4e18dd6|     50e219e0|ecad2386|  7801e8d9|    07d7df22| c357dbff| f1ac7184|    373ecbe6|          0|               0|21689|320| 50|2496|  3|167|100191| 23|     2014|         9|      21|        0|
++--------------------+-----+----+----------+--------+-----------+-------------+--------+----------+------------+---------+---------+------------+-----------+----------------+-----+---+---+----+---+---+------+---+---------+----------+--------+---------+
+```
+
 
 It looks like the year and month have only the single value, let's verify it:
 
 ```scala
-trainingHourDecoded.select("time_month").distinct.count()
-trainingHourDecoded.select("time_year").distinct.count()
+hourDecoded.select("time_month").distinct.count()
+hourDecoded.select("time_year").distinct.count()
 
 res20: Long = 1
 res21: Long = 1
@@ -253,7 +269,7 @@ res21: Long = 1
 We can safely drop these columns as they don't bring any knowledge to our model:
 
 ```scala
-val trainingHourDecoded2 = trainingHourDecoded.drop("time_month").drop("time_year")
+val hourDecoded2 = hourDecoded.drop("time_month").drop("time_year")
 ```
 
 Since we now have the transformed dataset, we can remove the raw dataset from the Spark cache:
