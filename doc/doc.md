@@ -30,7 +30,7 @@ The first things we want to do is to launch InsightEdge.
 To get the first data insights quickly, one can [launch InsightEdge on a laptop](http://insightedge.io/docs/010/0_quick_start.html).
 Though for the big datasets or compute-intensive tasks the resources of a single machine might not be enough.
 
-For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_cluster_setup.html) with four slaves and place the downloaded files on HDFS.
+For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_cluster_setup.html) with four workers and place the downloaded files on HDFS.
 
 ![Alt cluster](img/0_cluster.png?raw=true "Cluster")
 
