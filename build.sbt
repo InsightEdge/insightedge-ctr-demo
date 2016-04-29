@@ -6,8 +6,8 @@ scalaVersion := "2.10.6"
 
 val insightEdgeVersion = "0.4.0-SNAPSHOT"
 
-val insightEdgeScope = "provided"
-//val insightEdgeScope = "compile"
+//val insightEdgeScope = "provided"
+val insightEdgeScope = "compile"
 
 resolvers += Resolver.mavenLocal
 
