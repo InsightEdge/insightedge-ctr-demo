@@ -122,7 +122,7 @@ GROUP BY device_conn_type
 
 ![Alt](img/6_device_conn_type.png?raw=true "device_conn_type")
 
-![Alt](img/7_device_conn_type2.png?raw=true "device_conn_type")
+![Alt](img/7_device_conn_type_2.png?raw=true "device_conn_type")
 
 
 # Processing and transforming the data
