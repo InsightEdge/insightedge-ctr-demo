@@ -11,7 +11,7 @@ For the search engines like Google advertising became the key source of their re
 
 The revenue search engine can get is essentially:
 
-`Revenue = bid * probability_of_click`
+`revenue = bid * probability_of_click`
 
 The goal is to maximize the revenue for every search engine query. Whereis the `bid` is a known value, the `probability_of_click` is not. Thus predicting the probability of click becomes the key task.
 
@@ -153,13 +153,14 @@ df.columns.map(c => (c, df.select(c).distinct().count()))
 res14: Array[(String, Long)] = Array((id,40428967), (click,2), (hour,240), (C1,7), (banner_pos,7), (site_id,4737), (site_domain,7745), (site_category,26), (app_id,8552), (app_domain,559), (app_category,36), (device_id,2686408), (device_ip,6729486), (device_model,8251), (device_type,5), (device_conn_type,4), (C14,2626), (C15,8), (C16,9), (C17,435), (C18,4), (C19,68), (C20,172), (C21,60))
 ```
 
-We see that there are some features with a lot of unique values, for example device_ip has 6M+ unique values.
+We see that there are some features with a lot of unique values, for example `device_ip` has 6M+ unique values.
 Usually machine learning algorithms expect to work with numbers, rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
 We will need to deal with this later.
 
+# Transforming features
 
 
-# Processing and transforming the data
+
 
 
 
