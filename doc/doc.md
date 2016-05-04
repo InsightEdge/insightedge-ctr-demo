@@ -56,24 +56,6 @@ val df = sqlContext.read
 df.cache()
 ```
 
-The next thing we want to do is to copy the dataset to in-memory datagrid that is running collocated with the Spark.
-This way we can restart Zeppelin session or launch another Spark applications and pick up the dataset more quicker from the memory.
-
-With InsightEdge this can be done just with two lines of code:
-
-```scala
-import org.apache.spark.sql.insightedge._
-df.write.grid.save("raw_training")
-```
-
-Any time later we can bring "raw_training" collection to Spark memory with:
-```scala
-val df = sqlContext.read.grid.load("raw_training")
-```
-
-As we will show later, when developing applications with InsightEdge, the datagrid can be the primary datasource for your
-Spark applications, eliminating the need of ETL phase, and at the same time serve low latency transactional operations.
-
 ## Exploring the data
 
 Now that we have the dataset in Spark memory, we can read the first rows:
@@ -189,7 +171,7 @@ res14: Array[(String, Long)] = Array((id,40428967), (click,2), (hour,240), (C1,7
 ```
 
 We see that there are some features with a lot of unique values, for example `device_ip` has 6M+ unique values.
-Usually machine learning algorithms expect to work with numbers, rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
+Machine learning algorithms are typically defined in terms of numerical vectors rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
 We will need to deal with this later.
 
 # Processing and transforming the data
@@ -272,10 +254,143 @@ We can safely drop these columns as they don't bring any knowledge to our model:
 val hourDecoded2 = hourDecoded.drop("time_month").drop("time_year")
 ```
 
-Since we now have the transformed dataset, we can remove the raw dataset from the Spark cache:
+# Saving preprocessed data to the data grid
+
+The entire training dataset contains 40M+ rows, it takes quite a long time to experiment with different algorithms and approaches even in a clustered environment.
+We want to sample the dataset and checkpoint it to the in-memory data grid that is running collocated with the Spark.
+This way we can:
+* quickly iterate through different approaches
+* restart Zeppelin session or launch other Spark applications and pick up the dataset more quicker from the memory
+
+Since the training dataset contains the data for the 10 days, we can pick any day and sample it:
+
 ```scala
-df.unpersist()
+hourDecoded2.filter("time_day = 21").count()
+
+res51: Long = 4122995
 ```
+
+There are 4M+ rows for this day, which is about 10% of the entire dataset.
+
+Now let's save it to the data grid. This can be done with two lines of code:
+
+```scala
+import org.apache.spark.sql.insightedge._
+hourDecoded2.filter("time_day = 21").write.grid.save("day_21")
+```
+
+Any time later in another Spark context we can bring the collection to the Spark memory with:
+```scala
+val df = sqlContext.read.grid.load("day_21")
+```
+
+Also, we want to transform the `test` dataset that we will use for prediction in a similar way. For now let's subsample some
+small number of testing rows just to verify that our prediction routine works. Once we are confident in our predictive model we can predict the
+entire `test` dataset.
+
+```scala
+
+val testDf = sqlContext.read
+      .format("com.databricks.spark.csv")
+      .option("header", "true")
+      .option("inferSchema", "false")
+      .load("hdfs://10.8.1.116/data/avazu_ctr/test")
+
+val testSample = testDf.sample(false, 0.00001d)
+
+transformHour(testSample)
+    .drop("time_month")
+    .drop("time_year")
+    .write.grid.save("test_tiny")
+```
+
+# A simple algorithm
+
+Now that we have training and test datasets sampled, initially preprocessed and available in the data grid, we can close Web Notebook and start experimenting with
+different techniques and algorithms by submitting Spark applications.
+
+For our first baseline approach let's take a single feature `device_conn_type` and logistic regression algorithm:
+
+```scala
+import com.gigaspaces.spark.context.GigaSpacesConfig
+import com.gigaspaces.spark.implicits._
+import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
+import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS
+import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
+import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.insightedge._
+import org.apache.spark.{SparkConf, SparkContext}
+
+object CtrDemo1 {
+
+  def main(args: Array[String]): Unit = {
+    if (args.length < 2) {
+      System.err.println("Usage: CtrDemo1 <spark master url> <grid locator> <train collection>")
+      System.exit(1)
+    }
+
+    val Array(master, gridLocator, trainCollection) = args
+
+    // Configure InsightEdge settings
+    val gsConfig = GigaSpacesConfig("insightedge-space", None, Some(gridLocator))
+    val sc = new SparkContext(new SparkConf().setAppName("CtrDemo1").setMaster(master).setGigaSpaceConfig(gsConfig))
+    val sqlContext = new SQLContext(sc)
+
+    // load training collection from data grid
+    val trainDf = sqlContext.read.grid.load(trainCollection)
+    trainDf.cache()
+
+    // use one-hot-encoder to convert 'device_conn_type' categorical feature into a vector
+    val indexer = new StringIndexer()
+      .setInputCol("device_conn_type")
+      .setOutputCol("device_conn_type_index")
+      .fit(trainDf)
+
+    val indexed = indexer.transform(trainDf)
+
+    val encodedDf = new OneHotEncoder()
+      .setDropLast(false)
+      .setInputCol("device_conn_type_index")
+      .setOutputCol("device_conn_type_vector")
+      .transform(indexed)
+
+    // covert dataframe to label points RDD
+    val encodedRdd = encodedDf.map { row =>
+      val label = row.getAs[String]("click").toDouble
+      val features = row.getAs[Vector]("device_conn_type_vector")
+      LabeledPoint(label, features)
+    }
+
+    // Split data into training (60%) and test (40%)
+    val Array(trainingRdd, testRdd) = encodedRdd.randomSplit(Array(0.6, 0.4), seed = 11L)
+    trainingRdd.cache()
+
+    // Run training algorithm to build the model
+    val model = new LogisticRegressionWithLBFGS()
+      .setNumClasses(2)
+      .run(trainingRdd)
+
+    // Clear the prediction threshold so the model will return probabilities
+    model.clearThreshold
+
+    // Compute raw scores on the test set
+    val predictionAndLabels = testRdd.map { case LabeledPoint(label, features) =>
+      val prediction = model.predict(features)
+      (prediction, label)
+    }
+
+    // Instantiate metrics object
+    val metrics = new BinaryClassificationMetrics(predictionAndLabels)
+
+    val auROC = metrics.areaUnderROC
+    println("Area under ROC = " + auROC)
+  }
+}
+```
+
+
 
 
 

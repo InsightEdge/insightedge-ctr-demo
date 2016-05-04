@@ -6,7 +6,7 @@ import java.util.{Calendar, Date}
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, VectorAssembler}
+import org.apache.spark.ml.feature.{HashingTF, OneHotEncoder, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.sql.functions._
@@ -63,8 +63,8 @@ object CtrDemo {
 
     val cv = new CrossValidator()
       .setEstimator(pipeline)
-//      .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
-      .setEvaluator(new LogLossEvaluator())
+      .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
+//      .setEvaluator(new LogLossEvaluator())
       .setEstimatorParamMaps(paramGrid)
       .setNumFolds(3)
 
@@ -178,9 +178,9 @@ object CtrDemo {
     //    "device_model",
     "device_type",
     "device_conn_type",
-    "time_year",
-    "time_month",
-    "time_day",
+    "year",
+    "month",
+    "day",
     "time_hour",
     "C1",
     "banner_pos",
