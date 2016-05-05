@@ -326,7 +326,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 object CtrDemo1 {
 
   def main(args: Array[String]): Unit = {
-    if (args.length < 2) {
+    if (args.length < 3) {
       System.err.println("Usage: CtrDemo1 <spark master url> <grid locator> <train collection>")
       System.exit(1)
     }
@@ -356,7 +356,7 @@ object CtrDemo1 {
       .setOutputCol("device_conn_type_vector")
       .transform(indexed)
 
-    // covert dataframe to label points RDD
+    // convert dataframe to label points RDD
     val encodedRdd = encodedDf.map { row =>
       val label = row.getAs[String]("click").toDouble
       val features = row.getAs[Vector]("device_conn_type_vector")
@@ -390,6 +390,23 @@ object CtrDemo1 {
 }
 ```
 
+We will explain a little bit more what happens here. At first we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
+Then we use `OneHotEncoder` to map  a column of category indices to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
+of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`. Then we convert a dataframe to an RDD[LabeledPoint] since the `LogisticRegressionWithLBFGS` expects RDD as a training parameter.
+We train the logistic regression and use it to predict the click for the test dataset. Finally we compute the metrics of our classifier comparing the predicted labels with actual ones.
+
+To build this application and submit to InsightEdge cluster:
+```bash
+sbt clean assembly
+./bin/insightedge-submit --class io.insightedge.demo.ctr.CtrDemo1 --master spark://10.8.1.115:7077 --executor-memory 16G  ~/avazu_ctr/insightedge-ctr-demo-assembly-1.0.0.jar spark://10.8.1.115:7077 10.8.1.115:4174 day_21
+```
+
+It takes about 2 minutes for application to complete and output the following
+```
+Area under ROC = 0.5177127622153417
+```
+
+We get (AUROC)[https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve] slightly better than a random guess (AUROC = 0.5), which is not so bad for our first approach, but we can definitely do better.
 
 
 

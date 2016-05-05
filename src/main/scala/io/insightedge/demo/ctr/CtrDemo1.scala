@@ -17,7 +17,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 object CtrDemo1 {
 
   def main(args: Array[String]): Unit = {
-    if (args.length < 2) {
+    if (args.length < 3) {
       System.err.println("Usage: CtrDemo1 <spark master url> <grid locator> <train collection>")
       System.exit(1)
     }
@@ -47,7 +47,7 @@ object CtrDemo1 {
       .setOutputCol("device_conn_type_vector")
       .transform(indexed)
 
-    // covert dataframe to label points RDD
+    // convert dataframe to label points RDD
     val encodedRdd = encodedDf.map { row =>
       val label = row.getAs[String]("click").toDouble
       val features = row.getAs[Vector]("device_conn_type_vector")
