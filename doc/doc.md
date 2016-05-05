@@ -397,7 +397,7 @@ At first we load the training dataset from the data grid, which we prepared and 
 Then we use `StringIndexer` and `OneHotEncoder` to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
 of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`.
 
-Then we convert a dataframe to an RDD[LabeledPoint] since the `LogisticRegressionWithLBFGS` expects RDD as a training parameter.
+Then we convert a dataframe to an `RDD[LabeledPoint]`` since the `LogisticRegressionWithLBFGS` expects RDD as a training parameter.
 We train the logistic regression and use it to predict the click for the test dataset. Finally we compute the metrics of our classifier comparing the predicted labels with actual ones.
 
 To build this application and submit to InsightEdge cluster:
@@ -411,7 +411,7 @@ It takes about 2 minutes for application to complete and output the following
 Area under ROC = 0.5177127622153417
 ```
 
-We get (AUROC)[https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve] slightly better than a random guess (AUROC = 0.5), which is not so bad for our first approach, but we can definitely do better.
+We get [AUROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve) slightly better than a random guess (AUROC = 0.5), which is not so bad for our first approach, but we can definitely do better.
 
 
 
