@@ -174,7 +174,7 @@ We see that there are some features with a lot of unique values, for example `de
 Machine learning algorithms are typically defined in terms of numerical vectors rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
 We will need to deal with this later.
 
-# Processing and transforming the data
+## Processing and transforming the data
 
 Looking further at the dataset, we can see that the `hour` feature is in `YYMMDDHH` format.
 To allow the predictive model effectively learn from this feature it make sense to transform it into four features: `year`, `month` and `hour`.
@@ -254,7 +254,7 @@ We can safely drop these columns as they don't bring any knowledge to our model:
 val hourDecoded2 = hourDecoded.drop("time_month").drop("time_year")
 ```
 
-# Saving preprocessed data to the data grid
+## Saving preprocessed data to the data grid
 
 The entire training dataset contains 40M+ rows, it takes quite a long time to experiment with different algorithms and approaches even in a clustered environment.
 We want to sample the dataset and checkpoint it to the in-memory data grid that is running collocated with the Spark.
@@ -304,7 +304,7 @@ transformHour(testSample)
     .write.grid.save("test_tiny")
 ```
 
-# A simple algorithm
+## A simple algorithm
 
 Now that we have training and test datasets sampled, initially preprocessed and available in the data grid, we can close Web Notebook and start experimenting with
 different techniques and algorithms by submitting Spark applications.
@@ -396,7 +396,7 @@ At first we load the training dataset from the data grid, which we prepared and 
 Then we use [StringIndexer](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/StringIndexer.html) and [OneHotEncoder](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/OneHotEncoder.html) to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
 of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`.
 
-Then we convert a dataframe to an `RDD[LabeledPoint]`` since the [LogisticRegressionWithLBFGS](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/mllib/classification/LogisticRegressionWithLBFGS.html) expects RDD as a training parameter.
+Then we convert a dataframe to an `RDD[LabeledPoint]` since the [LogisticRegressionWithLBFGS](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/mllib/classification/LogisticRegressionWithLBFGS.html) expects RDD as a training parameter.
 We train the logistic regression and use it to predict the click for the test dataset. Finally we compute the metrics of our classifier comparing the predicted labels with actual ones.
 
 To build this application and submit to InsightEdge cluster:
@@ -412,20 +412,34 @@ Area under ROC = 0.5177127622153417
 
 We get [AUROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve) slightly better than a random guess (AUROC = 0.5), which is not so bad for our first approach, but we can definitely do better.
 
-# Experimenting with more features
+## Experimenting with more features
 
 Let's try to select more features and see how it affects our metrics.
 
 For this we created a new version of our app [CtrDemo2](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo2.scala) where we
-can easily select features we want to include. There we use [VectorAssembler](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/VectorAssembler.html) to assemble multiple feature vectors into a single `features` one.
+can easily select features we want to include. There we use [VectorAssembler](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/VectorAssembler.html) to assemble multiple feature vectors into a single `features` one:
 
-* with additionally included `device_type` improved AUROC = 0.531015564807053
+```scala
+val assembledDf = new VectorAssembler()
+  .setInputCols(categoricalColumnsVectors.toArray)
+  .setOutputCol("features")
+  .transform(encodedDf)
+```
+
+The result are the following:
+* with additionally included `device_type`: AUROC = 0.531015564807053
 * + `time_day` and `time_hour`: AUROC = 0.5555488992624483
 * + `C15`, `C16`, `C17`, `C18`, `C19`, `C20`, `C21`: AUROC = 0.7000630113145946
 
-You can notice how the AUROC is being improved as we added more and more features. This comes with the cost of the training time:
+You can notice how the AUROC is being improved as we add more and more features. This comes with the cost of the training time:
 
 ![Alt](img/13_application_time.png?raw=true "application time")
+
+We didn't included high-cardinality features such as `device_ip` and `device_id` as they will blow up the feature vector size. One may consider applying techniques such as feature hashing
+to reduce the dimension. We leave it out of this blog post's scope.
+
+## Tuning algorithm parameters
+
 
 
 
