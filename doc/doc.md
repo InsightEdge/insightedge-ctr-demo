@@ -390,9 +390,14 @@ object CtrDemo1 {
 }
 ```
 
-We will explain a little bit more what happens here. At first we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
-Then we use `OneHotEncoder` to map  a column of category indices to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
-of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`. Then we convert a dataframe to an RDD[LabeledPoint] since the `LogisticRegressionWithLBFGS` expects RDD as a training parameter.
+We will explain a little bit more what happens here.
+
+At first we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
+
+Then we use `StringIndexer` and `OneHotEncoder` to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
+of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`.
+
+Then we convert a dataframe to an RDD[LabeledPoint] since the `LogisticRegressionWithLBFGS` expects RDD as a training parameter.
 We train the logistic regression and use it to predict the click for the test dataset. Finally we compute the metrics of our classifier comparing the predicted labels with actual ones.
 
 To build this application and submit to InsightEdge cluster:
