@@ -343,12 +343,11 @@ object CtrDemo1 {
     trainDf.cache()
 
     // use one-hot-encoder to convert 'device_conn_type' categorical feature into a vector
-    val indexer = new StringIndexer()
+    val indexed = new StringIndexer()
       .setInputCol("device_conn_type")
       .setOutputCol("device_conn_type_index")
       .fit(trainDf)
-
-    val indexed = indexer.transform(trainDf)
+      .transform(trainDf)
 
     val encodedDf = new OneHotEncoder()
       .setDropLast(false)
@@ -356,7 +355,7 @@ object CtrDemo1 {
       .setOutputCol("device_conn_type_vector")
       .transform(indexed)
 
-    // convert dataframe to label points RDD
+    // convert dataframe to a label points RDD
     val encodedRdd = encodedDf.map { row =>
       val label = row.getAs[String]("click").toDouble
       val features = row.getAs[Vector]("device_conn_type_vector")
@@ -412,6 +411,21 @@ Area under ROC = 0.5177127622153417
 ```
 
 We get [AUROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve) slightly better than a random guess (AUROC = 0.5), which is not so bad for our first approach, but we can definitely do better.
+
+# Experimenting with more features
+
+Let's try to select more features and see how it affects our metrics.
+
+For this we created a new version of our app [CtrDemo2](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo2.scala) where we
+can easily select features we want to include. There we use `VectorAssembler` to assemble multiple feature vectors into a single `features` one.
+
+* with additionally included `device_type` improved AUROC = 0.531015564807053
+* + `time_day` and `time_hour`: AUROC = 0.5555488992624483
+* + `C15`, `C16`, `C17`, `C18`, `C19`, `C20`, `C21`: AUROC = 0.7000630113145946
+
+You can notice how the AUROC is being improved as we added more and more features. This comes with the cost of the training time:
+
+![Alt](img/13_application_time.png?raw=true "application time")
 
 
 

@@ -2,19 +2,19 @@ package io.insightedge.demo.ctr
 
 import com.gigaspaces.spark.context.GigaSpacesConfig
 import com.gigaspaces.spark.implicits._
-import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
+import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, VectorAssembler}
 import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.insightedge._
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * @author Oleksiy_Dyagilev
   */
-object CtrDemo1 {
+object CtrDemo2 {
 
   def main(args: Array[String]): Unit = {
     if (args.length < 3) {
@@ -26,31 +26,27 @@ object CtrDemo1 {
 
     // Configure InsightEdge settings
     val gsConfig = GigaSpacesConfig("insightedge-space", None, Some(gridLocator))
-    val sc = new SparkContext(new SparkConf().setAppName("CtrDemo1").setMaster(master).setGigaSpaceConfig(gsConfig))
+    val sc = new SparkContext(new SparkConf().setAppName("CtrDemo2").setMaster(master).setGigaSpaceConfig(gsConfig))
     val sqlContext = new SQLContext(sc)
 
     // load training collection from data grid
     val trainDf = sqlContext.read.grid.load(trainCollection)
     trainDf.cache()
 
-    // use one-hot-encoder to convert 'device_conn_type' categorical feature into a vector
-    val indexer = new StringIndexer()
-      .setInputCol("device_conn_type")
-      .setOutputCol("device_conn_type_index")
-      .fit(trainDf)
+    // use one-hot-encoder to convert categorical features into a vector
+    val encodedDf = encodeLabels(trainDf)
 
-    val indexed = indexer.transform(trainDf)
+    // assemble multiple feature vectors into a single one
+    val assembledDf = new VectorAssembler()
+      .setInputCols(categoricalColumnsVectors.toArray)
+      .setOutputCol("features")
+      .transform(encodedDf)
 
-    val encodedDf = new OneHotEncoder()
-      .setDropLast(false)
-      .setInputCol("device_conn_type_index")
-      .setOutputCol("device_conn_type_vector")
-      .transform(indexed)
 
     // convert dataframe to a label points RDD
-    val encodedRdd = encodedDf.map { row =>
+    val encodedRdd = assembledDf.map { row =>
       val label = row.getAs[String]("click").toDouble
-      val features = row.getAs[Vector]("device_conn_type_vector")
+      val features = row.getAs[Vector]("features")
       LabeledPoint(label, features)
     }
 
@@ -78,4 +74,55 @@ object CtrDemo1 {
     val auROC = metrics.areaUnderROC
     println("Area under ROC = " + auROC)
   }
+
+  val categoricalColumns = Seq(
+    //    "device_id",
+    //    "device_ip",
+    //    "device_model",
+    "device_type",
+    "device_conn_type",
+    "time_day",
+    "time_hour",
+    //    "C1",
+    //    "banner_pos",
+    //    "site_id",
+    //    "site_domain",
+    //    "site_category",
+    //    "app_id",
+    //    "app_domain",
+    //    "app_category",
+    //        "C14",
+            "C15",
+            "C16",
+            "C17",
+            "C18",
+            "C19",
+            "C20",
+            "C21"
+  )
+
+  val categoricalColumnsVectors = categoricalColumns.map(_ + "_vector")
+
+  def encodeLabel(df: DataFrame, inputColumn: String): DataFrame = {
+    println(s"Encoding label $inputColumn")
+    val indexed = new StringIndexer()
+      .setInputCol(inputColumn)
+      .setOutputCol(inputColumn + "_index")
+      .fit(df)
+      .transform(df)
+
+    val encoder = new OneHotEncoder()
+      .setDropLast(false)
+      .setInputCol(inputColumn + "_index")
+      .setOutputCol(inputColumn + "_vector")
+
+    encoder.transform(indexed)
+      .drop(inputColumn)
+      .drop(inputColumn + "_index")
+  }
+
+  def encodeLabels(df: DataFrame): DataFrame = {
+    categoricalColumns.foldLeft(df) { case (df, col) => encodeLabel(df, col) }
+  }
+
 }
