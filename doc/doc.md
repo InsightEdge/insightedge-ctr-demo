@@ -393,7 +393,7 @@ We will explain a little bit more what happens here.
 
 At first we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
 
-Then we use (StringIndexer)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/StringIndexer.html] and (OneHotEncoder)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/OneHotEncoder.html] to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
+Then we use [StringIndexer](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/StringIndexer.html) and [OneHotEncoder](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/OneHotEncoder.html) to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
 of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`.
 
 Then we convert a dataframe to an `RDD[LabeledPoint]`` since the (LogisticRegressionWithLBFGS)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/mllib/classification/LogisticRegressionWithLBFGS.html] expects RDD as a training parameter.
