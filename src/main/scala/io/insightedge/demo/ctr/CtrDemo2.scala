@@ -42,7 +42,6 @@ object CtrDemo2 {
       .setOutputCol("features")
       .transform(encodedDf)
 
-
     // convert dataframe to a label points RDD
     val encodedRdd = assembledDf.map { row =>
       val label = row.getAs[String]("click").toDouble
@@ -101,28 +100,32 @@ object CtrDemo2 {
             "C21"
   )
 
-  val categoricalColumnsVectors = categoricalColumns.map(_ + "_vector")
+  val categoricalColumnsVectors = categoricalColumns.map(vectorCol)
 
   def encodeLabel(df: DataFrame, inputColumn: String): DataFrame = {
     println(s"Encoding label $inputColumn")
     val indexed = new StringIndexer()
       .setInputCol(inputColumn)
-      .setOutputCol(inputColumn + "_index")
+      .setOutputCol(indexCol(inputColumn))
       .fit(df)
       .transform(df)
 
     val encoder = new OneHotEncoder()
       .setDropLast(false)
-      .setInputCol(inputColumn + "_index")
-      .setOutputCol(inputColumn + "_vector")
+      .setInputCol(indexCol(inputColumn))
+      .setOutputCol(vectorCol(inputColumn))
 
     encoder.transform(indexed)
       .drop(inputColumn)
-      .drop(inputColumn + "_index")
+      .drop(indexCol(inputColumn))
   }
 
   def encodeLabels(df: DataFrame): DataFrame = {
     categoricalColumns.foldLeft(df) { case (df, col) => encodeLabel(df, col) }
   }
+
+  def vectorCol(col: String) = col + "_vector"
+
+  def indexCol(col: String) = col + "_index"
 
 }
