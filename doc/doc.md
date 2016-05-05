@@ -393,10 +393,10 @@ We will explain a little bit more what happens here.
 
 At first we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
 
-Then we use `StringIndexer` and `OneHotEncoder` to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
+Then we use (StringIndexer)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/StringIndexer.html] and (OneHotEncoder)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/OneHotEncoder.html] to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
 of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`.
 
-Then we convert a dataframe to an `RDD[LabeledPoint]`` since the `LogisticRegressionWithLBFGS` expects RDD as a training parameter.
+Then we convert a dataframe to an `RDD[LabeledPoint]`` since the (LogisticRegressionWithLBFGS)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/mllib/classification/LogisticRegressionWithLBFGS.html] expects RDD as a training parameter.
 We train the logistic regression and use it to predict the click for the test dataset. Finally we compute the metrics of our classifier comparing the predicted labels with actual ones.
 
 To build this application and submit to InsightEdge cluster:
@@ -417,7 +417,7 @@ We get [AUROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#A
 Let's try to select more features and see how it affects our metrics.
 
 For this we created a new version of our app [CtrDemo2](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo2.scala) where we
-can easily select features we want to include. There we use `VectorAssembler` to assemble multiple feature vectors into a single `features` one.
+can easily select features we want to include. There we use (VectorAssembler)[https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/VectorAssembler.html] to assemble multiple feature vectors into a single `features` one.
 
 * with additionally included `device_type` improved AUROC = 0.531015564807053
 * + `time_day` and `time_hour`: AUROC = 0.5555488992624483
