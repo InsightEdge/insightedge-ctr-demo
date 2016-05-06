@@ -516,12 +516,14 @@ Best params found:{
 
 This simple logistic regression model has a rank of 1109 out of 1603 competitors in Kaggle.
 
-The future improvements are basically limited only by your data science skills and creativity. You may consider:
+The future improvements are only limited by data science skills and creativity. One may consider:
 * implement [Logarithmic Loss](https://www.kaggle.com/wiki/LogarithmicLoss) function as an Evaluator since it's used by Kaggle to calculate the model score. In our example we used AUROC
 * include other features that we didn't select
 * generate additional features such click history of a user
 * use hashing trick to reduce the features vector dimension
-* try other machine learning algorithm, the winner of competition used [LIBFFM](https://www.csie.ntu.edu.tw/~cjlin/libffm/)
+* try other machine learning algorithm, the winner of competition used [Field-aware Factorization Machines](http://www.csie.ntu.edu.tw/~r01922136/slides/ffm.pdf)
+
+## Architecture
 
 
 
