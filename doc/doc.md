@@ -256,14 +256,14 @@ val hourDecoded2 = hourDecoded.drop("time_month").drop("time_year")
 
 Let's also convert `click` from String to Double type.
 
-```
+```scala
 import org.apache.spark.sql.types.DoubleType
 
 val prepared = hourDecoded2
     .withColumn("clickTmp", hourDecoded2("click").cast(DoubleType))
     .drop("click")
     .withColumnRenamed("clickTmp", "click")
-``
+```
 
 ## Saving preprocessed data to the data grid
 
