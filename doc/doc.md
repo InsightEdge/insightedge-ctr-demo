@@ -254,6 +254,17 @@ We can safely drop these columns as they don't bring any knowledge to our model:
 val hourDecoded2 = hourDecoded.drop("time_month").drop("time_year")
 ```
 
+Let's also convert `click` from String to Double type.
+
+```
+import org.apache.spark.sql.types.DoubleType
+
+val prepared = hourDecoded2
+    .withColumn("clickTmp", hourDecoded2("click").cast(DoubleType))
+    .drop("click")
+    .withColumnRenamed("clickTmp", "click")
+``
+
 ## Saving preprocessed data to the data grid
 
 The entire training dataset contains 40M+ rows, it takes quite a long time to experiment with different algorithms and approaches even in a clustered environment.
@@ -265,7 +276,7 @@ This way we can:
 Since the training dataset contains the data for the 10 days, we can pick any day and sample it:
 
 ```scala
-hourDecoded2.filter("time_day = 21").count()
+prepared.filter("time_day = 21").count()
 
 res51: Long = 4122995
 ```
@@ -276,7 +287,7 @@ Now let's save it to the data grid. This can be done with two lines of code:
 
 ```scala
 import org.apache.spark.sql.insightedge._
-hourDecoded2.filter("time_day = 21").write.grid.save("day_21")
+prepared.filter("time_day = 21").write.grid.save("day_21")
 ```
 
 Any time later in another Spark context we can bring the collection to the Spark memory with:
@@ -284,24 +295,20 @@ Any time later in another Spark context we can bring the collection to the Spark
 val df = sqlContext.read.grid.load("day_21")
 ```
 
-Also, we want to transform the `test` dataset that we will use for prediction in a similar way. For now let's subsample some
-small number of testing rows just to verify that our prediction routine works. Once we are confident in our predictive model we can predict the
-entire `test` dataset.
+Also, we want to transform the `test` dataset that we will use for prediction in a similar way.
 
 ```scala
-
 val testDf = sqlContext.read
       .format("com.databricks.spark.csv")
       .option("header", "true")
       .option("inferSchema", "false")
       .load("hdfs://10.8.1.116/data/avazu_ctr/test")
 
-val testSample = testDf.sample(false, 0.00001d)
-
-transformHour(testSample)
+transformHour(testDf)
     .drop("time_month")
     .drop("time_year")
-    .write.grid.save("test_tiny")
+    .write.grid.save("test")
+
 ```
 
 ## A simple algorithm
@@ -357,7 +364,7 @@ object CtrDemo1 {
 
     // convert dataframe to a label points RDD
     val encodedRdd = encodedDf.map { row =>
-      val label = row.getAs[String]("click").toDouble
+      val label = row.getAs[Double]("click")
       val features = row.getAs[Vector]("device_conn_type_vector")
       LabeledPoint(label, features)
     }
@@ -440,10 +447,82 @@ to reduce the dimension. We leave it out of this blog post's scope.
 
 ## Tuning algorithm parameters
 
+Tuning algorithm parameters is a search problem. We will use [Spark Pipeline API](http://spark.apache.org/docs/latest/ml-guide.html) with a [Grid Search](https://en.wikipedia.org/wiki/Hyperparameter_optimization) technique.
+Grid search evaluates a model for each combination of algorithm parameters specified in a grid (do not confuse with data grid).
+
+Pipeline API supports model selection using [cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)) technique. For each set of parameters it trains the given `Estimator` and evaluates it using the given `Evaluator`.
+We will use `BinaryClassificationEvaluator` that uses AUROC as a metric by default.
+
+```scala
+val lr = new LogisticRegression().setLabelCol("click")
+val pipeline = new Pipeline().setStages(Array(assembler, lr))
+
+val paramGrid = new ParamGridBuilder()
+  .addGrid(lr.regParam, Array(0.01 , 0.1 /*, 1.0 */))
+  .addGrid(lr.elasticNetParam, Array(0.0 /*, 0.5 , 1.0 */))
+  .addGrid(lr.fitIntercept, Array(false /*, true */))
+  .build()
+
+val cv = new CrossValidator()
+  .setEstimator(pipeline)
+  .setEvaluator(new BinaryClassificationEvaluator().setLabelCol("click"))
+  .setEstimatorParamMaps(paramGrid)
+  .setNumFolds(3)
+
+val cvModel = cv.fit(encodedTrainDf)
+```
+
+Output the best set of parameters:
+
+```scala
+println("Grid search results:")
+cvModel.getEstimatorParamMaps.zip(cvModel.avgMetrics).foreach(println)
+
+println("Best set of parameters found:" + cvModel.getEstimatorParamMaps
+  .zip(cvModel.avgMetrics)
+  .maxBy(_._2)
+  ._1)
+```
+
+Use the best model to predict `test` dataset loaded from the data grid:
+```scala
+val predictionDf = cvModel.transform(encodedTestDf).select("id", "probability").map {
+  case Row(id: String, probability: Vector) => (id, probability(1))
+}.toDF("id", "click")
+```
+
+Then the results saved back to csv on hdfs, so we can submit them to Kaggle, see the complete listing in [CtrDemo3](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo3.scala)
+
+It takes about 27 mins to train and compare models for two regularization parameters 0.01 and 0.1. The results are:
+```
+Grid search results:
+({
+	logreg_2b70e3edf1f0-elasticNetParam: 0.0,
+	logreg_2b70e3edf1f0-fitIntercept: false,
+	logreg_2b70e3edf1f0-regParam: 0.01
+},0.7000655195682837)
+({
+	logreg_2b70e3edf1f0-elasticNetParam: 0.0,
+	logreg_2b70e3edf1f0-fitIntercept: false,
+	logreg_2b70e3edf1f0-regParam: 0.1
+},0.697680175815199)
+
+Best params found:{
+	logreg_2b70e3edf1f0-elasticNetParam: 0.0,
+	logreg_2b70e3edf1f0-fitIntercept: false,
+	logreg_2b70e3edf1f0-regParam: 0.01
+}
+```
+
+This simple logistic regression model has a rank of 1109 out of 1603 competitors in Kaggle.
+
+The future improvements are basically limited only by your data science skills and creativity. You may consider:
+* implement [Logarithmic Loss](https://www.kaggle.com/wiki/LogarithmicLoss) function as an Evaluator since it's used by Kaggle to calculate the model score. In our example we used AUROC
+* include other features that we didn't select
+* generate additional features such click history of a user
+* use hashing trick to reduce the features vector dimension
+* try other machine learning algorithm, the winner of competition used [LIBFFM](https://www.csie.ntu.edu.tw/~cjlin/libffm/)
 
 
 
 
-References
-* https://en.wikipedia.org/wiki/Click-through_rate
-* http://www.wordstream.com/ppc

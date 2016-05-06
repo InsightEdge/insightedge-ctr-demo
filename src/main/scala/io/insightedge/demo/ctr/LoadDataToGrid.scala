@@ -1,8 +1,13 @@
 package io.insightedge.demo.ctr
 
+import java.text.SimpleDateFormat
+import java.util.Calendar
+
 import com.gigaspaces.spark.context.GigaSpacesConfig
 import com.gigaspaces.spark.implicits._
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.insightedge._
+import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -28,25 +33,55 @@ object LoadDataToGrid {
       .option("inferSchema", "false")
       .load(trainCsvPath)
 
-    HourTransformer
-      .transformHour(df)
-      .write.mode(SaveMode.Overwrite).grid.save("day_21")
-
-
     val testDf = sql.read
       .format("com.databricks.spark.csv")
       .option("header", "true")
       .option("inferSchema", "false")
       .load(testCsvPath)
 
-    HourTransformer
-      .transformHour(testDf)
-      .write.mode(SaveMode.Overwrite).grid.save("test_tiny")
+    transformHour(testDf)
+      .write.mode(SaveMode.Overwrite).grid.save("test")
 
 
+    sc.gridRdd()
+
+    sc.gridRdd()
 
   }
 
+  def castClickType(df: DataFrame): DataFrame = {
+    df.withColumn("clickTmp", df("click").cast(DoubleType))
+      .drop("click")
+      .withColumnRenamed("clickTmp", "click")
+  }
+
+  def transformHour(df: DataFrame): DataFrame = {
+    val toYear = udf[Int, String](s => DateUtils.parse(s, Calendar.YEAR))
+    val toMonth = udf[Int, String](s => DateUtils.parse(s, Calendar.MONTH))
+    val toDay = udf[Int, String](s => DateUtils.parse(s, Calendar.DAY_OF_MONTH))
+    val toHour = udf[Int, String](s => DateUtils.parse(s, Calendar.HOUR_OF_DAY))
+
+    df.withColumn("time_year", toYear(df("hour")))
+      .withColumn("time_month", toMonth(df("hour")))
+      .withColumn("time_day", toDay(df("hour")))
+      .withColumn("time_hour", toHour(df("hour")))
+      .drop("hour")
+      .drop("time_month")
+      .drop("time_year")
+  }
+
+  object DateUtils {
+    val dateFormat = new ThreadLocal[SimpleDateFormat]() {
+      override def initialValue(): SimpleDateFormat = new SimpleDateFormat("yyMMddHH")
+    }
+
+    def parse(s: String, field: Int): Int = {
+      val date = dateFormat.get().parse(s)
+      val cal = Calendar.getInstance()
+      cal.setTime(date)
+      cal.get(field)
+    }
+  }
 
 
 }

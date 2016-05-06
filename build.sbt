@@ -6,8 +6,8 @@ scalaVersion := "2.10.6"
 
 val insightEdgeVersion = "0.4.0-SNAPSHOT"
 
-//val insightEdgeScope = "provided"
-val insightEdgeScope = "compile"
+val insightEdgeScope = "provided"
+//val insightEdgeScope = "compile"
 
 resolvers += Resolver.mavenLocal
 
@@ -18,7 +18,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.0" % "test"
 )
 
-//test in assembly := {}
+test in assembly := {}
 
 assemblyMergeStrategy in assembly := {
   case PathList("org", "apache", "spark", "unused", "UnusedStubClass.class") => MergeStrategy.first

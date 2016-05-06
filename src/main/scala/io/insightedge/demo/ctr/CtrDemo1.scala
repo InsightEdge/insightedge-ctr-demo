@@ -49,7 +49,7 @@ object CtrDemo1 {
 
     // convert dataframe to a label points RDD
     val encodedRdd = encodedDf.map { row =>
-      val label = row.getAs[String]("click").toDouble
+      val label = row.getAs[Double]("click")
       val features = row.getAs[Vector]("device_conn_type_vector")
       LabeledPoint(label, features)
     }
