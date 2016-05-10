@@ -12,6 +12,10 @@ import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
+  * This is a helper utility to load sample datasets to grid on local dev machine
+  *
+  * Not used in the blog post (in the blog we use Zeppelin to do this)
+  *
   * @author Oleksiy_Dyagilev
   */
 object LoadDataToGrid {
@@ -41,11 +45,6 @@ object LoadDataToGrid {
 
     transformHour(testDf)
       .write.mode(SaveMode.Overwrite).grid.save("test")
-
-
-    sc.gridRdd()
-
-    sc.gridRdd()
 
   }
 
