@@ -311,6 +311,8 @@ transformHour(testDf)
 
 ```
 
+The complete listing of notebook can be found on [github](https://github.com/InsightEdge/insightedge-ctr-demo/blob/master/zeppelin/CTR%20demo.json). You can import it to Zeppelin and play with it on your own.
+
 ## A simple algorithm
 
 Now that we have training and test datasets sampled, initially preprocessed and available in the data grid, we can close Web Notebook and start experimenting with
@@ -423,7 +425,7 @@ We get [AUROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#A
 
 Let's try to select more features and see how it affects our metrics.
 
-For this we created a new version of our app [CtrDemo2](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo2.scala) where we
+For this we created a new version of our app [CtrDemo2](https://github.com/InsightEdge/insightedge-ctr-demo/blob/master/src/main/scala/io/insightedge/demo/ctr/CtrDemo2.scala) where we
 can easily select features we want to include. We use [VectorAssembler](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/VectorAssembler.html) to assemble multiple feature vectors into a single `features` one:
 
 ```scala
@@ -491,7 +493,7 @@ val predictionDf = cvModel.transform(encodedTestDf).select("id", "probability").
 }.toDF("id", "click")
 ```
 
-Then the results are saved back to csv on hdfs, so we can submit them to Kaggle, see the complete listing in [CtrDemo3](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo3.scala).
+Then the results are saved back to csv on hdfs, so we can submit them to Kaggle, see the complete listing in [CtrDemo3](https://github.com/InsightEdge/insightedge-ctr-demo/blob/master/src/main/scala/io/insightedge/demo/ctr/CtrDemo3.scala).
 
 It takes about 27 mins to train and compare models for two regularization parameters 0.01 and 0.1. The results are:
 ```
@@ -550,6 +552,5 @@ We didn't have a goal to build a perfect predictive model, so there is great roo
 
 In architecture section we discussed how the typical design may look like, what are the benefits of using InsightEdge for machine learning.
 
-The sources of Zeppelin notebook and submittable spark applications can be found on [github](https://github.com/InsightEdge/insightedge-ctr-demo/)
-
+The Zeppelin notebook can be found [here](https://github.com/InsightEdge/insightedge-ctr-demo/blob/master/zeppelin/CTR%20demo.json) and submittable spark apps [here](https://github.com/InsightEdge/insightedge-ctr-demo/tree/master/src/main/scala/io/insightedge/demo/ctr)
 
