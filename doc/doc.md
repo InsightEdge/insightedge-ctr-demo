@@ -536,5 +536,5 @@ There is no need to build a complex ETL pipeline that extracts training data fro
 ETL pipeline introduces unwanted latency that can be a stopper for reactive machine learning apps. With InsightEdge Spark can view the **live** data
 * the training data lives in the memory of data grid, which acts as an extension of Spark memory. This way we can load the data **quicker**
 * in-memory data grid is a **general-purpose** highly available and fault tolerant storage. With support of ACID transactions and SQL queries it becomes the primary storage for the application.
-* InsightEdge stack is scalable in both computation(Spark) and storage(data grid) tiers. This makes it attractive for large-scale machine learning.
+* InsightEdge stack is **scalable** in both computation(Spark) and storage(data grid) tiers. This makes it attractive for large-scale machine learning.
 
