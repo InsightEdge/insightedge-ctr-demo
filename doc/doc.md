@@ -537,3 +537,19 @@ There is no need to build a complex ETL pipeline that extracts training data fro
 * in-memory data grid is a **general-purpose** highly available and fault tolerant storage. With support of ACID transactions and SQL queries it becomes the primary storage for the application;
 * InsightEdge stack is **scalable** in both computation (Spark) and storage (data grid) tiers. This makes it attractive for large-scale machine learning.
 
+## Summary
+
+In this blog post we demonstrated how to use machine learning algorithms with InsightEdge. We went through typical stages:
+* interactive data exploration with Zeppelin
+* feature selection and transformation
+* training predictive models
+* calculating model metrics
+* tuning parameters
+
+We didn't have a goal to build a perfect predictive model, so there is great room for improvement.
+
+In architecture section we discussed how the typical design may look like, what are the benefits of using InsightEdge for machine learning.
+
+The sources of Zeppelin notebook and submittable spark applications can be found on [github](https://github.com/InsightEdge/insightedge-ctr-demo/)
+
+
