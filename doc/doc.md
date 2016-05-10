@@ -525,6 +525,10 @@ The future improvements are only limited by data science skills and creativity. 
 
 ## Architecture
 
+The following diagram demonstrates the design of machine learning application with InsightEdge.
+
+![Alt Arch](img/arch.png?raw=true "Arch")
+
 
 
 
