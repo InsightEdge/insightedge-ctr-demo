@@ -442,7 +442,7 @@ You can notice how the AUROC is being improved as we add more and more features.
 
 ![Alt](img/13_application_time.png?raw=true "application time")
 
-We didn't includ high-cardinality features such as `device_ip` and `device_id` as they will blow up the feature vector size. One may consider applying techniques such as feature hashing
+We didn't include high-cardinality features such as `device_ip` and `device_id` as they will blow up the feature vector size. One may consider applying techniques such as feature hashing
 to reduce the dimension. We will leave it out of this blog post's scope.
 
 ## Tuning algorithm parameters
