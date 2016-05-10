@@ -529,6 +529,12 @@ The following diagram demonstrates the design of machine learning application wi
 
 ![Alt Arch](img/arch.png?raw=true "Arch")
 
+The key design advantages are:
+* the single platform converges analytical processing (machine learning) powered by Spark with transactional processing powered by custom real-time applications
+* real-time application can execute any OLTP query(read, insert, update, delete) on a training data that is immediately available for Spark analytical queries or machine learning routines.
+There is no need to build a complex ETL pipeline that extracts training data from OLTP database with Kafka/Flume/HDFS. Beside the complexity,
+ETL pipeline introduces unwanted latency that can be a stopper for reactive machine learning apps. With InsightEdge Spark can view the 'live' data.
+* the training data lives in the memory of data grid, which acts as an extension of Spark memory. This way we can load the data quicker.
 
 
 
