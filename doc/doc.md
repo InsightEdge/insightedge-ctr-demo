@@ -7,7 +7,7 @@ In this blog post we will look how to use machine learning algorithms with Insig
 There are several compensation models in online advertising industry, probably the most notable is CPC (Cost Per Click), in which an advertiser pays a publisher when the ad is clicked.
 Search engine advertising is one of the most popular forms of CPC. It allows advertisers to bid for ad placement in a search engine's sponsored links when someone searches on a keyword that is related to their business offering.
 
-For the search engines like Google advertising became the key source of their revenue. The challenge for the advertising system is to determine what ad should be displayed for each query search engine receives.
+For the search engines, like Google, advertising became the key source of their revenue. The challenge for the advertising system is to determine what ad should be displayed for each query search engine receives.
 
 The revenue search engine can get is essentially:
 
@@ -24,9 +24,9 @@ With the large datasets and/or CPU intensive workloads you may want to scale out
 
 The [dataset](https://www.kaggle.com/c/avazu-ctr-prediction/data) consists of:
 * train (5.9G) - Training set. 10 days of click-through data, ordered chronologically. Non-clicks and clicks are subsampled according to different strategies.
-* test (674M) - Test set. 1 day of ads to for testing model predictions.
+* test (674M) - Test set. 1 day of ads to test model predictions.
 
-The first things we want to do is to launch InsightEdge.
+At first, we want to launch InsightEdge.
 
 To get the first data insights quickly, one can [launch InsightEdge on a laptop](http://insightedge.io/docs/010/0_quick_start.html).
 Though for the big datasets or compute-intensive tasks the resources of a single machine might not be enough.
@@ -44,7 +44,7 @@ The dataset is in csv format, so we will use databricks csv library to load it f
 z.load("com.databricks:spark-csv_2.10:1.3.0")
 ```
 
-load the dataframe into Spark memory and cache:
+Load the dataframe into Spark memory and cache:
 
 ```scala
 val df = sqlContext.read
@@ -102,7 +102,7 @@ The data fields are:
 * device_conn_type
 * C14-C21 -- anonymized categorical variables
 
-Let's see how many rows in the training dataset:
+Let's see how many rows are in the training dataset:
 
 ```scala
 val totalCount = df.count()
@@ -112,7 +112,7 @@ totalCount: Long = 40428967
 
 There are about 40M+ rows in the dataset.
 
-Let's now calculate the CTR(click-through rate) of the dataset. The click-through rate is the number of times a click is made on the advertisement divided by the total impressions (the number of times an advertisement was served):
+Let's now calculate the CTR (click-through rate) of the dataset. The click-through rate is the number of times a click is made on the advertisement divided by the total impressions (the number of times an advertisement was served):
 
 ```scala
 val clicks = df.filter("click = 1").count()
@@ -127,7 +127,7 @@ Now, the question is which features should we use to create a predictive model? 
 
 For example, let's explore the `device_conn_type` feature. Our assumption might be that this is a categorical variable like Wi-Fi, 2G, 3G or LTE. This might be a relevant feature since clicking on an ad with a slow connection is not something common.
 
-At first we register the dataframe as a SQL table:
+At first, we register the dataframe as a SQL table:
 
 ```scala
 df.registerTempTable("training")
@@ -160,7 +160,7 @@ ORDER BY ctr DESC
 
 ![Alt](img/11_banner_dimension.png?raw=true "banner dimension")
 
-We can notice some correlation between the ad size and its performance. The most common one appears to be 320x50px known as "mobile leaderboard" in [Google AdSense](https://support.google.com/adsense/answer/68727?hl=en)
+We can notice some correlation between the ad size and its performance. The most common one appears to be 320x50px known as "mobile leaderboard" in [Google AdSense](https://support.google.com/adsense/answer/68727?hl=en).
 
 What about other features? All of them represent categorical values, how many unique categories for each feature?
 
@@ -170,7 +170,7 @@ df.columns.map(c => (c, df.select(c).distinct().count()))
 res14: Array[(String, Long)] = Array((id,40428967), (click,2), (hour,240), (C1,7), (banner_pos,7), (site_id,4737), (site_domain,7745), (site_category,26), (app_id,8552), (app_domain,559), (app_category,36), (device_id,2686408), (device_ip,6729486), (device_model,8251), (device_type,5), (device_conn_type,4), (C14,2626), (C15,8), (C16,9), (C17,435), (C18,4), (C19,68), (C20,172), (C21,60))
 ```
 
-We see that there are some features with a lot of unique values, for example `device_ip` has 6M+ unique values.
+We see that there are some features with a lot of unique values, for example, `device_ip` has 6M+ different values.
 Machine learning algorithms are typically defined in terms of numerical vectors rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
 We will need to deal with this later.
 
@@ -238,7 +238,7 @@ hourDecoded.show(10)
 ```
 
 
-It looks like the year and month have only the single value, let's verify it:
+It looks like the year and month have only one value, let's verify it:
 
 ```scala
 hourDecoded.select("time_month").distinct.count()
@@ -271,7 +271,7 @@ The entire training dataset contains 40M+ rows, it takes quite a long time to ex
 We want to sample the dataset and checkpoint it to the in-memory data grid that is running collocated with the Spark.
 This way we can:
 * quickly iterate through different approaches
-* restart Zeppelin session or launch other Spark applications and pick up the dataset more quicker from the memory
+* restart Zeppelin session or launch other Spark applications and pick up the dataset more quickly from the memory
 
 Since the training dataset contains the data for the 10 days, we can pick any day and sample it:
 
@@ -398,9 +398,9 @@ object CtrDemo1 {
 
 We will explain a little bit more what happens here.
 
-At first we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
+At first, we load the training dataset from the data grid, which we prepared and saved earlier with Web Notebook.
 
-Then we use [StringIndexer](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/StringIndexer.html) and [OneHotEncoder](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/OneHotEncoder.html) to map  a column of categories to a column of binary vectors. For example, with 4 categories of "device_conn_type", an input value
+Then we use [StringIndexer](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/StringIndexer.html) and [OneHotEncoder](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/OneHotEncoder.html) to map  a column of categories to a column of binary vectors. For example, with 4 categories of `device_conn_type`, an input value
 of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.0]`.
 
 Then we convert a dataframe to an `RDD[LabeledPoint]` since the [LogisticRegressionWithLBFGS](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/mllib/classification/LogisticRegressionWithLBFGS.html) expects RDD as a training parameter.
@@ -424,7 +424,7 @@ We get [AUROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#A
 Let's try to select more features and see how it affects our metrics.
 
 For this we created a new version of our app [CtrDemo2](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo2.scala) where we
-can easily select features we want to include. There we use [VectorAssembler](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/VectorAssembler.html) to assemble multiple feature vectors into a single `features` one:
+can easily select features we want to include. We use [VectorAssembler](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/ml/feature/VectorAssembler.html) to assemble multiple feature vectors into a single `features` one:
 
 ```scala
 val assembledDf = new VectorAssembler()
@@ -433,7 +433,7 @@ val assembledDf = new VectorAssembler()
   .transform(encodedDf)
 ```
 
-The result are the following:
+The results are the following:
 * with additionally included `device_type`: AUROC = 0.531015564807053
 * + `time_day` and `time_hour`: AUROC = 0.5555488992624483
 * + `C15`, `C16`, `C17`, `C18`, `C19`, `C20`, `C21`: AUROC = 0.7000630113145946
@@ -442,8 +442,8 @@ You can notice how the AUROC is being improved as we add more and more features.
 
 ![Alt](img/13_application_time.png?raw=true "application time")
 
-We didn't included high-cardinality features such as `device_ip` and `device_id` as they will blow up the feature vector size. One may consider applying techniques such as feature hashing
-to reduce the dimension. We leave it out of this blog post's scope.
+We didn't includ high-cardinality features such as `device_ip` and `device_id` as they will blow up the feature vector size. One may consider applying techniques such as feature hashing
+to reduce the dimension. We will leave it out of this blog post's scope.
 
 ## Tuning algorithm parameters
 
@@ -451,7 +451,7 @@ Tuning algorithm parameters is a search problem. We will use [Spark Pipeline API
 Grid search evaluates a model for each combination of algorithm parameters specified in a grid (do not confuse with data grid).
 
 Pipeline API supports model selection using [cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)) technique. For each set of parameters it trains the given `Estimator` and evaluates it using the given `Evaluator`.
-We will use `BinaryClassificationEvaluator` that uses AUROC as a metric by default.
+We will use `BinaryClassificationEvaluator` that has AUROC as a metric by default.
 
 ```scala
 val lr = new LogisticRegression().setLabelCol("click")
@@ -491,7 +491,7 @@ val predictionDf = cvModel.transform(encodedTestDf).select("id", "probability").
 }.toDF("id", "click")
 ```
 
-Then the results saved back to csv on hdfs, so we can submit them to Kaggle, see the complete listing in [CtrDemo3](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo3.scala)
+Then the results are saved back to csv on hdfs, so we can submit them to Kaggle, see the complete listing in [CtrDemo3](https://github.com/InsightEdge/insightedge-ctr-demo/blob/dev/src/main/scala/io/insightedge/demo/ctr/CtrDemo3.scala).
 
 It takes about 27 mins to train and compare models for two regularization parameters 0.01 and 0.1. The results are:
 ```
@@ -530,11 +530,10 @@ The following diagram demonstrates the design of machine learning application wi
 ![Alt Arch](img/arch.png?raw=true "Arch")
 
 The key design advantages are:
-* the single platform **converges** analytical processing (machine learning) powered by Spark with transactional processing powered by custom real-time applications
-* real-time application can execute any OLTP query(read, insert, update, delete) on a training data that is **immediately available** for Spark analytical queries or machine learning routines.
-There is no need to build a complex ETL pipeline that extracts training data from OLTP database with Kafka/Flume/HDFS. Beside the complexity,
-ETL pipeline introduces unwanted latency that can be a stopper for reactive machine learning apps. With InsightEdge Spark can view the **live** data
-* the training data lives in the memory of data grid, which acts as an extension of Spark memory. This way we can load the data **quicker**
-* in-memory data grid is a **general-purpose** highly available and fault tolerant storage. With support of ACID transactions and SQL queries it becomes the primary storage for the application.
-* InsightEdge stack is **scalable** in both computation(Spark) and storage(data grid) tiers. This makes it attractive for large-scale machine learning.
+* the single platform **converges** analytical processing (machine learning) powered by Spark with transactional processing powered by custom real-time applications;
+* real-time application can execute any OLTP query (read, insert, update, delete) on a training data that is **immediately available** for Spark analytical queries or machine learning routines.
+There is no need to build a complex ETL pipeline that extracts training data from OLTP database with Kafka/Flume/HDFS. Beside the complexity, ETL pipeline introduces unwanted latency that can be a stopper for reactive machine learning apps. With InsightEdge, Spark applications can view the **live** data;
+* the training data lives in the memory of data grid, which acts as an extension of Spark memory. This way we can load the data **quicker**;
+* in-memory data grid is a **general-purpose** highly available and fault tolerant storage. With support of ACID transactions and SQL queries it becomes the primary storage for the application;
+* InsightEdge stack is **scalable** in both computation (Spark) and storage (data grid) tiers. This makes it attractive for large-scale machine learning.
 
