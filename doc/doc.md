@@ -1,4 +1,4 @@
-# Scalable machine learning with InsightEdge: mobile advertisement clicks prediction.
+# Scalable machine learning with InsightEdge: mobile advertisement clicks prediction
 
 ## Overview
 
