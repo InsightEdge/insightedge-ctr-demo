@@ -474,6 +474,8 @@ val cv = new CrossValidator()
 val cvModel = cv.fit(encodedTrainDf)
 ```
 
+We included two regularization parameters 0.01 and 0.1 in our search grid for now, others are commented out for now.
+
 Output the best set of parameters:
 
 ```scala
