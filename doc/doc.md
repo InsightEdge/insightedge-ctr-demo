@@ -318,7 +318,7 @@ The complete listing of notebook can be found on [github](https://github.com/Ins
 Now that we have training and test datasets sampled, initially preprocessed and available in the data grid, we can close Web Notebook and start experimenting with
 different techniques and algorithms by submitting Spark applications.
 
-For our first baseline approach let's take a single feature `device_conn_type` and logistic regression algorithm:
+For our first baseline approach let's take a single feature `device_conn_type` and [logistic regression](https://en.wikipedia.org/wiki/Logistic_regression) algorithm:
 
 ```scala
 import com.gigaspaces.spark.context.GigaSpacesConfig
