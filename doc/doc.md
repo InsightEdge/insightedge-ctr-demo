@@ -37,7 +37,7 @@ For this problem we will [setup a cluster](http://insightedge.io/docs/010/13_clu
 
 Let's open the interactive [Web Notebook](http://insightedge.io/docs/010/14_notebook.html) and start exploring our dataset.
 
-The dataset is in csv format, so we will use databricks csv library to load it from hdfs into Spark dataframe:
+The dataset is in csv format, so we will use databricks csv library to load it from hdfs into the Spark dataframe:
 
 ```scala
 %dep
@@ -121,7 +121,7 @@ val ctr = clicks.toFloat / totalCount
 clicks: Long = 6865066
 ctr: Float = 0.16980562
 ```
-The CTR is 0.169 (or 16.9%) which is quite high number, the common value in industry is about 0.2-0.3%. So high value is probably because non-clicks and clicks are subsampled according to different strategies as stated by Avazu.
+The CTR is 0.169 (or 16.9%) which is quite a high number, the common value in the industry is about 0.2-0.3%. So a high value is probably because non-clicks and clicks are subsampled according to different strategies, as stated by Avazu.
 
 Now, the question is which features should we use to create a predictive model? This is a difficult question that requires a deep knowledge of the problem domain. Let's try to learn it from the dataset we have.
 
@@ -171,13 +171,13 @@ res14: Array[(String, Long)] = Array((id,40428967), (click,2), (hour,240), (C1,7
 ```
 
 We see that there are some features with a lot of unique values, for example, `device_ip` has 6M+ different values.
-Machine learning algorithms are typically defined in terms of numerical vectors rather than categorical values. Converting such categorical features will result into high dimensional vector which might be very expensive.
+Machine learning algorithms are typically defined in terms of numerical vectors rather than categorical values. Converting such categorical features will result in a high dimensional vector which might be very expensive.
 We will need to deal with this later.
 
 ## Processing and transforming the data
 
 Looking further at the dataset, we can see that the `hour` feature is in `YYMMDDHH` format.
-To allow the predictive model effectively learn from this feature it make sense to transform it into four features: `year`, `month` and `hour`.
+To allow the predictive model to effectively learn from this feature it makes sense to transform it into three features: year, month and hour.
 Let's develop the function to transform the dataframe:
 
 ```scala
@@ -268,10 +268,10 @@ val prepared = hourDecoded2
 ## Saving preprocessed data to the data grid
 
 The entire training dataset contains 40M+ rows, it takes quite a long time to experiment with different algorithms and approaches even in a clustered environment.
-We want to sample the dataset and checkpoint it to the in-memory data grid that is running collocated with the Spark.
+We want to sample the dataset and checkpoint it to the in-memory data grid that is running collocated with Spark.
 This way we can:
 * quickly iterate through different approaches
-* restart Zeppelin session or launch other Spark applications and pick up the dataset more quickly from the memory
+* restart the Zeppelin session or launch other Spark applications and pick up the dataset more quickly from memory
 
 Since the training dataset contains the data for the 10 days, we can pick any day and sample it:
 
@@ -408,13 +408,13 @@ of the second category would map to an output vector of `[0.0, 1.0, 0.0, 0.0, 0.
 Then we convert a dataframe to an `RDD[LabeledPoint]` since the [LogisticRegressionWithLBFGS](https://spark.apache.org/docs/1.6.0/api/java/org/apache/spark/mllib/classification/LogisticRegressionWithLBFGS.html) expects RDD as a training parameter.
 We train the logistic regression and use it to predict the click for the test dataset. Finally we compute the metrics of our classifier comparing the predicted labels with actual ones.
 
-To build this application and submit to InsightEdge cluster:
+To build this application and submit it to the InsightEdge cluster:
 ```bash
 sbt clean assembly
 ./bin/insightedge-submit --class io.insightedge.demo.ctr.CtrDemo1 --master spark://10.8.1.115:7077 --executor-memory 16G  ~/avazu_ctr/insightedge-ctr-demo-assembly-1.0.0.jar spark://10.8.1.115:7077 10.8.1.115:4174 day_21
 ```
 
-It takes about 2 minutes for application to complete and output the following
+It takes about 2 minutes for the application to complete and output the following:
 ```
 Area under ROC = 0.5177127622153417
 ```
@@ -524,8 +524,8 @@ The future improvements are only limited by data science skills and creativity. 
 * implement [Logarithmic Loss](https://www.kaggle.com/wiki/LogarithmicLoss) function as an Evaluator since it's used by Kaggle to calculate the model score. In our example we used AUROC
 * include other features that we didn't select
 * generate additional features such click history of a user
-* use hashing trick to reduce the features vector dimension
-* try other machine learning algorithm, the winner of competition used [Field-aware Factorization Machines](http://www.csie.ntu.edu.tw/~r01922136/slides/ffm.pdf)
+* use a hashing trick to reduce the features vector dimension
+* try other machine learning algorithms, the winner of competition used  [Field-aware Factorization Machines](http://www.csie.ntu.edu.tw/~r01922136/slides/ffm.pdf)
 
 ## Architecture
 
@@ -535,10 +535,10 @@ The following diagram demonstrates the design of machine learning application wi
 
 The key design advantages are:
 * the single platform **converges** analytical processing (machine learning) powered by Spark with transactional processing powered by custom real-time applications;
-* real-time application can execute any OLTP query (read, insert, update, delete) on a training data that is **immediately available** for Spark analytical queries or machine learning routines.
-There is no need to build a complex ETL pipeline that extracts training data from OLTP database with Kafka/Flume/HDFS. Beside the complexity, ETL pipeline introduces unwanted latency that can be a stopper for reactive machine learning apps. With InsightEdge, Spark applications can view the **live** data;
+* real-time applications can execute any OLTP query (read, insert, update, delete) on training data that is **immediately available** for Spark analytical queries or machine learning routines. There is no need to build a complex ETL pipeline that extracts training data from OLTP database with Kafka/Flume/HDFS. Besides the complexity, an ETL pipeline introduces unwanted latency that can be a stopper for reactive machine learning apps.
+With InsightEdge, Spark applications can view the **live** data;
 * the training data lives in the memory of data grid, which acts as an extension of Spark memory. This way we can load the data **quicker**;
-* in-memory data grid is a **general-purpose** highly available and fault tolerant storage. With support of ACID transactions and SQL queries it becomes the primary storage for the application;
+* An in-memory data grid is a **general-purpose** highly available and fault tolerant storage. With support of ACID transactions and SQL queries it becomes the primary storage for the application;
 * InsightEdge stack is **scalable** in both computation (Spark) and storage (data grid) tiers. This makes it attractive for large-scale machine learning.
 
 ## Summary
@@ -552,7 +552,7 @@ In this blog post we demonstrated how to use machine learning algorithms with In
 
 We didn't have a goal to build a perfect predictive model, so there is great room for improvement.
 
-In architecture section we discussed how the typical design may look like, what are the benefits of using InsightEdge for machine learning.
+In the architecture section we discussed how the typical design may look like, what are the benefits of using InsightEdge for machine learning.
 
 The Zeppelin notebook can be found [here](https://github.com/InsightEdge/insightedge-ctr-demo/blob/master/zeppelin/CTR%20demo.json) and submittable spark apps [here](https://github.com/InsightEdge/insightedge-ctr-demo/tree/master/src/main/scala/io/insightedge/demo/ctr)
 
