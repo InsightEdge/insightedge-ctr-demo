@@ -1,1 +1,1 @@
-sh "sbt clean compile -no-colors"
+sh "sbt clean assembly -no-colors"
