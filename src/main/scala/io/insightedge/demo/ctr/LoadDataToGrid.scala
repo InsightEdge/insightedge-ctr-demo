@@ -4,9 +4,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import com.gigaspaces.spark.context.GigaSpacesConfig
-import com.gigaspaces.spark.implicits._
+import com.gigaspaces.spark.implicits.all._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.insightedge._
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.{SparkConf, SparkContext}
