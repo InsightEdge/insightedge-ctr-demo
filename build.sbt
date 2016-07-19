@@ -4,7 +4,7 @@ version := "1.0.0"
 
 scalaVersion := "2.10.6"
 
-val insightEdgeVersion = "0.4.0-SNAPSHOT"
+val insightEdgeVersion = "1.0.0"
 
 val insightEdgeScope = "provided"
 //val insightEdgeScope = "compile"
